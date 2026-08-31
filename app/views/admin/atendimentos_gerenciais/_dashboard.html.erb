@@ -1,0 +1,79 @@
+<% labels = { "today" => "Hoje", "last_7_days" => "Últimos 7 dias", "last_30_days" => "Últimos 30 dias", "current_month" => "Mês atual", "previous_month" => "Mês anterior", "custom" => "Personalizado" } %>
+<style>
+  .mgmt-dashboard { color:#17202a; max-width:1440px; }
+  .mgmt-header { display:flex; gap:1rem; align-items:flex-start; justify-content:space-between; margin-bottom:1rem; }
+  .mgmt-header h2 { margin:0 0 .35rem; font-size:1.55rem; }
+  .mgmt-muted { color:#617083; }
+  .mgmt-filter { background:#fff; border:1px solid #dfe5ec; border-radius:8px; padding:1rem; display:flex; flex-wrap:wrap; gap:.75rem; align-items:end; margin-bottom:1.5rem; }
+  .mgmt-filter label { display:flex; flex-direction:column; gap:.3rem; font-weight:600; }
+  .mgmt-filter select,.mgmt-filter input { min-height:38px; border:1px solid #b8c2cc; border-radius:5px; padding:.45rem .6rem; }
+  .mgmt-button { min-height:38px; border:0; border-radius:5px; padding:.55rem 1rem; background:#2563a6; color:#fff; cursor:pointer; font-weight:700; }
+  .mgmt-section { margin:0 0 1.75rem; }
+  .mgmt-section h3 { border-bottom:2px solid #2563a6; padding-bottom:.5rem; }
+  .mgmt-grid { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:1rem; }
+  .mgmt-card { position:relative; background:#fff; border:1px solid #dfe5ec; border-radius:8px; padding:1rem; min-height:116px; box-shadow:0 1px 2px rgba(0,0,0,.04); }
+  .mgmt-card h4 { margin:0 2rem .8rem 0; color:#435064; font-size:.9rem; }
+  .mgmt-value { display:block; font-size:1.65rem; font-weight:750; margin-bottom:.45rem; }
+  .mgmt-help { position:absolute; right:1rem; top:1rem; width:22px; height:22px; border-radius:50%; border:1px solid #9aa7b5; text-align:center; cursor:help; }
+  .mgmt-trend { font-size:.85rem; font-weight:600; }
+  .mgmt-trend--up { color:#147a43; } .mgmt-trend--down { color:#b42318; } .mgmt-trend--stable { color:#617083; }
+  .mgmt-empty { color:#617083; font-size:.9rem; }
+  @media(max-width:980px){.mgmt-grid{grid-template-columns:repeat(2,minmax(0,1fr));}}
+  @media(max-width:640px){.mgmt-header{display:block}.mgmt-grid{grid-template-columns:1fr}.mgmt-filter>*{width:100%}.mgmt-button{width:100%}}
+</style>
+<div class="mgmt-dashboard" aria-live="polite">
+  <div class="mgmt-header">
+    <div>
+      <h2>Atendimentos Gerenciais</h2>
+      <p class="mgmt-muted">Indicadores comerciais, de marketing e operacionais calculados com dados reais do CargaClick.</p>
+    </div>
+    <p class="mgmt-muted">Última atualização: <time datetime="<%= dashboard[:updated_at] %>"><%= l(Time.zone.parse(dashboard[:updated_at]), format: :long) %></time></p>
+  </div>
+
+  <%= form_with url: admin_atendimentos_gerenciais_path, method: :get, local: true, class: "mgmt-filter", data: { turbo: false } do |form| %>
+    <%= form.label :period, "Período" do %>
+      Período
+      <%= form.select :period, labels.map { |value, label| [label, value] }, selected: dashboard[:period] %>
+    <% end %>
+    <%= form.label :start_date, "Data inicial" do %>
+      Data inicial
+      <%= form.date_field :start_date, value: dashboard[:range][:start].to_date, max: dashboard[:range][:end].to_date %>
+    <% end %>
+    <%= form.label :end_date, "Data final" do %>
+      Data final
+      <%= form.date_field :end_date, value: dashboard[:range][:end].to_date, min: dashboard[:range][:start].to_date %>
+    <% end %>
+    <%= form.submit "Atualizar dados", class: "mgmt-button", data: { disable_with: "Atualizando…" } %>
+  <% end %>
+
+  <% { commercial: "Indicadores comerciais", marketing: "Indicadores de marketing", operational: "Indicadores operacionais" }.each do |key, title| %>
+    <section class="mgmt-section" aria-labelledby="section-<%= key %>">
+      <h3 id="section-<%= key %>"><%= title %></h3>
+      <div class="mgmt-grid">
+        <% dashboard[:sections][key].each do |metric| %>
+          <article class="mgmt-card">
+            <h4><%= metric[:name] %></h4>
+            <span class="mgmt-help" tabindex="0" role="img" aria-label="Ajuda: <%= metric[:description] %>" title="<%= metric[:description] %>">?</span>
+            <% if metric[:available] %>
+              <span class="mgmt-value">
+                <% case metric[:format] %>
+                <% when :currency %><%= number_to_currency(metric[:value], unit: "R$", separator: ",", delimiter: ".") %>
+                <% when :percentage %><%= number_to_percentage(metric[:value], precision: 2, strip_insignificant_zeros: true, separator: ",") %>
+                <% else %><%= number_with_delimiter(metric[:value], delimiter: ".") %><% end %>
+              </span>
+              <span class="mgmt-trend mgmt-trend--<%= metric[:trend] %>">
+                <% if metric[:comparison].nil? %>— Comparação não disponível
+                <% elsif metric[:trend] == :up %>↑ <%= number_to_percentage(metric[:comparison].abs, precision: 2, strip_insignificant_zeros: true, separator: ",") %> vs. período anterior
+                <% elsif metric[:trend] == :down %>↓ <%= number_to_percentage(metric[:comparison].abs, precision: 2, strip_insignificant_zeros: true, separator: ",") %> vs. período anterior
+                <% else %>→ Estável vs. período anterior<% end %>
+              </span>
+            <% else %>
+              <span class="mgmt-value">Não disponível</span>
+              <span class="mgmt-empty"><%= metric[:description] %></span>
+            <% end %>
+          </article>
+        <% end %>
+      </div>
+    </section>
+  <% end %>
+</div>
