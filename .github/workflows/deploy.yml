@@ -4,23 +4,51 @@ on:
   push:
     branches:
       - main
+  workflow_dispatch:
+
+concurrency:
+  group: render-deploy-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  RENDER_CLI_VERSION: "v2.22.0"
+  RENDER_OUTPUT: text
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
+    timeout-minutes: 30
 
     steps:
       - name: Checkout código
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
-      - name: Instalar Render CLI
+      - name: Instalar Render CLI oficial
         run: |
-          curl -fsSL https://render.com/install.sh | bash
-          echo "$HOME/.render/bin" >> $GITHUB_PATH
+          set -euo pipefail
+          version="${RENDER_CLI_VERSION#v}"
+          curl -sSfL \
+            "https://github.com/render-oss/cli/releases/download/${RENDER_CLI_VERSION}/cli_${version}_linux_amd64.zip" \
+            -o /tmp/render.zip
+          unzip -q /tmp/render.zip -d /tmp/render
+          sudo mv "/tmp/render/cli_${RENDER_CLI_VERSION}" /usr/local/bin/render
+          render --version
 
       - name: Deploy no Render
         env:
           RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
           RENDER_SERVICE_ID: ${{ secrets.RENDER_SERVICE_ID }}
         run: |
-          render deploy --service-id $RENDER_SERVICE_ID --api-key $RENDER_API_KEY --wait
+          set -euo pipefail
+          render deploys create "$RENDER_SERVICE_ID" \
+            --commit "$GITHUB_SHA" \
+            --wait \
+            --confirm
+
+      - name: Exibir logs recentes em caso de falha
+        if: failure()
+        env:
+          RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
+          RENDER_SERVICE_ID: ${{ secrets.RENDER_SERVICE_ID }}
+        run: |
+          render logs -r "$RENDER_SERVICE_ID" --start 30m --limit 200 || true
