@@ -41,7 +41,12 @@ public/packs-test
 .env.*
 !.env.example
 /config/master.key
+/config/master copy.key
+/config/*.key
 /config/credentials/*.key
+/config/credentials/development.yml
+/config/credentials/*.yml
+/config/credentials/*.yaml
 
 # ===============================================================
 # Testes / Coverage / CI
