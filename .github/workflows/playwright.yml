@@ -54,6 +54,11 @@ jobs:
         run: |
           bundle exec rails db:migrate
           yarn build
+      - name: Verify Rails application
+        run: |
+          bundle exec rails zeitwerk:check
+          bundle exec rspec
+          bundle exec rails test
       - name: Start Rails and wait until ready
         run: |
           bundle exec rails server -b 127.0.0.1 -p 3000 > rails-playwright.log 2>&1 &
