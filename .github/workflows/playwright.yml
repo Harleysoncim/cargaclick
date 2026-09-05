@@ -1,27 +1,91 @@
 name: Playwright Tests
+
 on:
   push:
-    branches: [ main, master ]
+    branches: [main, master]
   pull_request:
-    branches: [ main, master ]
+    branches: [main, master]
+
 jobs:
   test:
-    timeout-minutes: 60
+    timeout-minutes: 30
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: cargaclick_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d cargaclick_test"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      RAILS_ENV: test
+      SECRET_KEY_BASE: playwright-test-only-secret-key-base
+      PGHOST: 127.0.0.1
+      PGPORT: 5432
+      PGUSER: postgres
+      PGPASSWORD: postgres
+      CI: true
+      RAILS_LOG_TO_STDOUT: true
     steps:
-    - uses: actions/checkout@v4
-    - uses: actions/setup-node@v4
-      with:
-        node-version: lts/*
-    - name: Install dependencies
-      run: npm ci
-    - name: Install Playwright Browsers
-      run: npx playwright install --with-deps
-    - name: Run Playwright tests
-      run: npx playwright test
-    - uses: actions/upload-artifact@v4
-      if: ${{ !cancelled() }}
-      with:
-        name: playwright-report
-        path: playwright-report/
-        retention-days: 30
+      - uses: actions/checkout@v4
+      - uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: "3.2.4"
+          bundler-cache: true
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: yarn
+          cache-dependency-path: yarn.lock
+      - name: Enable Yarn
+        run: corepack enable
+      - name: Install JavaScript dependencies
+        run: yarn install --frozen-lockfile --non-interactive
+      - name: Install Chromium
+        run: yarn playwright install --with-deps chromium
+      - name: Prepare test database and assets
+        run: |
+          bundle exec rails db:migrate
+          yarn build
+      - name: Verify Zeitwerk
+        run: bundle exec rails zeitwerk:check
+      - name: Run RSpec
+        run: bundle exec rspec
+      - name: Run Rails tests
+        run: bundle exec rails test
+      - name: Start Rails and wait until ready
+        run: |
+          bundle exec rails server -b 127.0.0.1 -p 3000 > rails-playwright.log 2>&1 &
+          echo $! > rails-playwright.pid
+          for attempt in {1..60}; do
+            status="$(curl --silent --output /dev/null --write-out '%{http_code}' http://127.0.0.1:3000/ || true)"
+            if [ "$status" != "000" ]; then
+              echo "Rails respondeu com HTTP $status"
+              exit 0
+            fi
+            sleep 1
+          done
+          cat rails-playwright.log
+          exit 1
+      - name: Run Playwright tests
+        run: yarn test:e2e
+      - name: Show Rails log on failure
+        if: ${{ failure() }}
+        run: tail -n 200 rails-playwright.log || true
+      - uses: actions/upload-artifact@v4
+        if: ${{ !cancelled() }}
+        with:
+          name: playwright-report
+          path: |
+            playwright-report/
+            test-results/
+            rails-playwright.log
+          if-no-files-found: ignore
+          retention-days: 30

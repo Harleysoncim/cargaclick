@@ -80,6 +80,10 @@
 
 <!-- Navegação -->
 <div class="mt-8 flex justify-start">
+  <% if transportador_signed_in? && (@frete.transportador_id.nil? || @frete.transportador_id == current_transportador.id) %>
+    <%= link_to "Seguro da carga", transportadores_frete_seguro_path(@frete),
+                class: "mr-3 inline-flex items-center bg-purple-700 hover:bg-purple-800 text-white px-6 py-3 rounded-xl font-semibold transition shadow-md" %>
+  <% end %>
   <%= link_to fretes_path,
               class: "inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-700
                       text-white px-6 py-3 rounded-xl font-semibold transition shadow-md" do %>

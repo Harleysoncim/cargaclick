@@ -25,3 +25,34 @@ Para testar, prepare o banco de teste e execute:
 bin/rails db:test:prepare
 bin/rails test test/services/admin/management_metrics_test.rb test/requests/admin_atendimentos_gerenciais_test.rb
 ```
+
+## NF-e e seguro de carga
+
+Na área autenticada do transportador, abra um frete disponível ou atribuído e selecione **Seguro da carga**. A nota pode ser lida pela câmera traseira, por uma foto escolhida no aparelho ou pela entrada manual da chave/URL. A permissão da câmera só é solicitada após o clique, o stream é encerrado ao fechar ou sair da tela, e fotos não são enviadas ao servidor nem armazenadas. Sempre há uma confirmação antes de vincular a leitura ao frete.
+
+O QR Code normalmente contém apenas uma chave de 44 dígitos ou um endereço oficial de consulta. O sistema não acessa automaticamente esse endereço, não faz scraping da SEFAZ e não inventa número, emitente ou valor. Dados ausentes precisam ser informados pelo transportador. A chave é mascarada na interface e filtrada dos logs.
+
+O transportador pode recusar o seguro ou consentir com o envio dos dados e pedir uma cotação. A recusa pode ser revista enquanto o frete não começou. Os estados são: `nao_solicitado`, `aguardando_dados`, `aguardando_cotacao`, `cotado`, `contratado`, `recusado` e `erro`. **Uma cotação não representa cobertura**: a interface só mostra “Carga segurada” após uma resposta real do provider, com seguradora, prêmio e número de cotação confirmados.
+
+### Provider de seguros
+
+Por padrão, `INSURANCE_PROVIDER=disabled`: a solicitação fica em `aguardando_cotacao`, sem prêmio, cobrança ou apólice simulada. Uma integração futura deve herdar de `Seguros::Providers::Base`, respeitar timeout, normalizar a resposta e nunca registrar chave completa da NF-e ou documentos fiscais. Configure apenas no ambiente, sem commitar valores:
+
+- `INSURANCE_PROVIDER`
+- `INSURANCE_API_URL`
+- `INSURANCE_API_KEY`
+- `NFE_QRCODE_ALLOWED_HOSTS` (somente hosts oficiais adicionais, separados por vírgula)
+
+Dados enviados mediante consentimento: valor e descrição da carga, origem, destino, peso, tipo de veículo, documento do emitente e indicadores de risco. A operação não guarda a fotografia. Chave e dados fiscais devem ser retidos somente durante o frete e pelos prazos legais/auditáveis aplicáveis; a rotina operacional de retenção deve anonimizar ou excluir esses campos ao fim desse prazo.
+
+Para validar a funcionalidade:
+
+```sh
+bundle exec rails db:migrate
+bundle exec rails db:migrate RAILS_ENV=test
+bundle exec rspec
+bundle exec rails routes
+bundle exec rails zeitwerk:check
+bundle exec rails runner 'puts :ok'
+git diff --check
+```

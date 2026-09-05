@@ -6,6 +6,8 @@ require "json"
 require "uri"
 
 class CalcularFrete
+  class ServicoDeRotasIndisponivel < StandardError; end
+
   # ==================================================
   # CONSTANTES DE NEGÓCIO
   # ==================================================
@@ -52,6 +54,8 @@ class CalcularFrete
       valor_total: breakdown[:valor_final],
       breakdown: breakdown
     )
+  rescue ServicoDeRotasIndisponivel
+    resposta_erro("Serviço de rotas indisponível. Tente novamente mais tarde.")
   rescue StandardError => e
     log_erro_fatal(e)
     resposta_erro("Erro interno ao simular o frete")
@@ -84,20 +88,24 @@ class CalcularFrete
   end
 
   # ==================================================
-  # DISTÂNCIA (OPENROUTESERVICE + FALLBACK)
+  # DISTÂNCIA (OPENROUTESERVICE; sem valor fictício)
   # ==================================================
   def calcular_distancia
-    return distancia_placeholder if ENV["OPENROUTESERVICE_API_KEY"].blank?
+    if ENV["OPENROUTESERVICE_API_KEY"].blank?
+      raise ServicoDeRotasIndisponivel
+    end
 
     coords_origem  = geocodificar(@origem)
     coords_destino = geocodificar(@destino)
 
-    return distancia_placeholder if coords_origem.nil? || coords_destino.nil?
+    raise ServicoDeRotasIndisponivel if coords_origem.nil? || coords_destino.nil?
 
     distancia_ors(coords_origem, coords_destino)
+  rescue ServicoDeRotasIndisponivel
+    raise
   rescue StandardError => e
-    Rails.logger.warn("[CalcularFrete][ORS][FALLBACK] #{e.message}")
-    distancia_placeholder
+    Rails.logger.warn("[CalcularFrete][ORS] falha=#{e.class}")
+    raise ServicoDeRotasIndisponivel
   end
 
   def geocodificar(endereco)
@@ -127,17 +135,13 @@ class CalcularFrete
     req.body = { coordinates: [origem, destino] }.to_json
 
     res = http.request(req)
-    raise "Erro ORS" unless res.is_a?(Net::HTTPSuccess)
+    raise ServicoDeRotasIndisponivel unless res.is_a?(Net::HTTPSuccess)
 
     body = JSON.parse(res.body)
     metros = body.dig("features", 0, "properties", "segments", 0, "distance")
-    metros.to_f / 1000.0
-  end
+    raise ServicoDeRotasIndisponivel unless metros
 
-  # Fallback seguro (nunca quebra)
-  def distancia_placeholder
-    base_km = 20 + rand(30..90)
-    (base_km + (@peso / 10.0)).round(2)
+    metros.to_f / 1000.0
   end
 
   # ==================================================
@@ -179,7 +183,7 @@ class CalcularFrete
   # ==================================================
   def log_erro_fatal(exception)
     Rails.logger.error(
-      "[CalcularFrete][FATAL] #{exception.class}: #{exception.message}\n" \
+      "[CalcularFrete][FATAL] #{exception.class}\n" \
       "#{exception.backtrace&.first(5)&.join("\n")}"
     )
   end

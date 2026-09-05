@@ -7,6 +7,7 @@ class FretesController < ApplicationController
   before_action :set_frete, only: %i[
     show edit update destroy chat rastreamento
   ]
+  before_action :authorize_rastreamento!, only: :rastreamento
 
   # ==================================================
   # FORMULÁRIO PÚBLICO — SIMULAÇÃO
@@ -141,6 +142,23 @@ class FretesController < ApplicationController
     return if @frete.present?
 
     redirect_to inicio_path, alert: "Frete não encontrado."
+  end
+
+  def authorize_rastreamento!
+    authenticated = current_cliente.present? ||
+                    current_transportador.present? ||
+                    current_admin_user.present?
+
+    unless authenticated
+      redirect_to root_path, alert: "Faça login para acessar o rastreamento."
+      return
+    end
+
+    authorized = current_admin_user.present? ||
+                 (current_cliente.present? && @frete.cliente_id == current_cliente.id) ||
+                 (current_transportador.present? && @frete.transportador_id == current_transportador.id)
+
+    head :not_found unless authorized
   end
 
   # ==================================================
