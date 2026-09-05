@@ -3,6 +3,8 @@
 require "rails_helper"
 
 RSpec.describe "Transportadores cargo insurance", type: :request do
+  include Devise::Test::IntegrationHelpers
+
   let!(:transportador) { Transportador.create!(email: "driver@example.com", password: "Password123!") }
   let!(:other_transportador) { Transportador.create!(email: "other@example.com", password: "Password123!") }
   let!(:frete) { Frete.create!(origem: "São Paulo", destino: "Santos", transportador:) }
