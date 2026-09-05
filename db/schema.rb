@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.1].define(version: 2026_02_01_031545) do
+ActiveRecord::Schema[7.1].define(version: 2026_09_05_000000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "plpgsql"
 
@@ -188,9 +188,38 @@ ActiveRecord::Schema[7.1].define(version: 2026_02_01_031545) do
     t.decimal "volume", precision: 10, scale: 2
     t.decimal "valor", precision: 10, scale: 2
     t.decimal "valor_negociado", precision: 10, scale: 2
+    t.boolean "seguro_carga", default: false, null: false
+    t.string "seguro_status", default: "nao_solicitado", null: false
+    t.decimal "seguro_valor_carga", precision: 12, scale: 2
+    t.decimal "seguro_valor_premio", precision: 12, scale: 2
+    t.string "seguro_seguradora"
+    t.string "seguro_numero_cotacao"
+    t.datetime "seguro_cotado_em"
+    t.datetime "seguro_aceite_em"
+    t.datetime "seguro_recusado_em"
+    t.boolean "seguro_consentimento", default: false, null: false
+    t.datetime "seguro_consentimento_em"
+    t.text "seguro_descricao_mercadoria"
+    t.string "seguro_origem"
+    t.string "seguro_destino"
+    t.decimal "seguro_peso", precision: 10, scale: 2
+    t.string "seguro_tipo_veiculo"
+    t.boolean "seguro_carga_perigosa", default: false, null: false
+    t.boolean "seguro_carga_perecivel", default: false, null: false
+    t.boolean "seguro_carga_alto_valor", default: false, null: false
+    t.string "nfe_chave_acesso"
+    t.text "nfe_qrcode_url"
+    t.string "nfe_numero"
+    t.string "nfe_serie"
+    t.string "nfe_emitente_documento"
+    t.string "nfe_emitente_nome"
+    t.decimal "nfe_valor_total", precision: 12, scale: 2
+    t.datetime "nfe_lida_em"
     t.index ["cliente_id"], name: "index_fretes_on_cliente_id"
+    t.index ["nfe_chave_acesso"], name: "index_fretes_on_nfe_chave_acesso"
     t.index ["pin_status"], name: "index_fretes_on_pin_status"
     t.index ["pix_txid"], name: "index_fretes_on_pix_txid", unique: true
+    t.index ["seguro_status"], name: "index_fretes_on_seguro_status"
     t.index ["status_pagamento"], name: "index_fretes_on_status_pagamento"
     t.index ["transportador_id"], name: "index_fretes_on_transportador_id"
   end
