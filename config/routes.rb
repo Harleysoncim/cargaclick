@@ -78,6 +78,14 @@ Rails.application.routes.draw do
     namespace :transportadores do
       get "dashboard", to: "dashboards#index", as: :dashboard
 
+      resources :fretes, only: [] do
+        resource :seguro, only: %i[show update destroy], controller: "seguros" do
+          post :ler_nfe
+          post :cotar
+          post :aceitar
+        end
+      end
+
       get  "completar_perfil",
            to: "cadastro#edit",
            as: :completar_perfil

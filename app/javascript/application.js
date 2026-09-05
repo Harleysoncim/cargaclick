@@ -4,6 +4,7 @@ console.log("Hello from CargoClick Rails 7 with ESBuild!");
 
 // Importa apenas o JS do Leaflet (não o CSS, pois ele já está no <head> do HTML)
 import L from 'leaflet';
+import './nfe_qrcode_reader';
 
 // Quando o DOM carregar, configura o mapa de cadastro de transportador (se existir o elemento)
 document.addEventListener('DOMContentLoaded', () => {

@@ -1,6 +1,9 @@
 # frozen_string_literal: true
 
 class Frete < ApplicationRecord
+  SEGURO_STATUSES = %w[
+    nao_solicitado aguardando_dados aguardando_cotacao cotado contratado recusado erro
+  ].freeze
   # ==========================================================
   # 📎 ASSOCIAÇÕES
   # ==========================================================
@@ -42,6 +45,12 @@ class Frete < ApplicationRecord
   # ✅ VALIDAÇÕES
   # ==========================================================
   validates :status, :status_pagamento, :pin_status, presence: true
+  validates :seguro_status, inclusion: { in: SEGURO_STATUSES }
+  validates :nfe_chave_acesso, format: { with: /\A\d{44}\z/ }, allow_blank: true
+  validates :seguro_valor_carga,
+            numericality: { greater_than: 0 },
+            if: :seguro_carga?
+  validate :seguro_contratado_exige_cotacao_confirmada
 
   validates :tentativas_pin,
             numericality: { greater_than_or_equal_to: 0 }
@@ -103,10 +112,28 @@ class Frete < ApplicationRecord
   scope :recentes,   -> { order(created_at: :desc) }
   scope :por_cep, ->(cep) { where(origem_cep: cep) if cep.present? }
 
+  def nfe_chave_mascarada
+    return if nfe_chave_acesso.blank?
+
+    "#{nfe_chave_acesso.first(6)}#{'*' * 32}#{nfe_chave_acesso.last(6)}"
+  end
+
+  def seguro_editavel?
+    !frete_em_andamento? && !frete_concluido?
+  end
+
   # ==========================================================
   # 🔒 MÉTODOS PRIVADOS
   # ==========================================================
   private
+
+  def seguro_contratado_exige_cotacao_confirmada
+    return unless seguro_status == "contratado"
+    return if seguro_numero_cotacao.present? && seguro_seguradora.present? &&
+              seguro_valor_premio.to_d.positive? && seguro_aceite_em.present?
+
+    errors.add(:seguro_status, "não pode ser contratado sem cotação confirmada")
+  end
 
   # ---------- Defaults seguros ----------
   def definir_defaults
