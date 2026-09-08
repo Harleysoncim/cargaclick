@@ -81,3 +81,5 @@ end
 # Windows
 # =====================================================
 gem "tzinfo-data", platforms: %i[windows jruby]
+
+gem "dockerfile-rails", ">= 1.7", :group => :development
