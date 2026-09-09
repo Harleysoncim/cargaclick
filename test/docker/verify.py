@@ -96,12 +96,11 @@ def smoke():
     try:
         # A random master key cannot decrypt the repository's real ciphertext.
         # Mount a matching synthetic encrypted file for this isolated test only.
-        generator = "ActiveSupport::EncryptedFile.new(content_path: '/validation/credentials.yml.enc', key_path: '/validation/unused.key', env_key: 'RAILS_MASTER_KEY', raise_if_missing_key: true).write(\"{}\\n\")"
+        generator = "ActiveSupport::EncryptedFile.new(content_path: '/validation/credentials.yml.enc', key_path: '/validation/unused.key', env_key: 'RAILS_MASTER_KEY', raise_if_missing_key: true).write(\"{}\\n\"); File.chmod(0644, '/validation/credentials.yml.enc')"
         run(['run', '--rm', '--network', 'none', '-e', 'RAILS_MASTER_KEY',
              '--mount', 'type=bind,src=' + credentials.name + ',dst=/validation', IMAGE,
              'bundle', 'exec', 'ruby', '-r', 'active_support', '-r', 'active_support/encrypted_file', '-e', generator])
         encrypted_path = str(Path(credentials.name) / 'credentials.yml.enc')
-        os.chmod(encrypted_path, 0o644)
         run(['network', 'create', '--internal', network])
         created.append(('network', network))
         run(['run', '-d', '--name', db, '--network', network, '--tmpfs', '/var/lib/postgresql/data',
