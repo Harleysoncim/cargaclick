@@ -56,9 +56,8 @@
             <span class="mgmt-help" tabindex="0" role="img" aria-label="Ajuda: <%= metric[:description] %>" title="<%= metric[:description] %>">?</span>
             <% if metric[:available] %>
               <span class="mgmt-value">
-                <% case metric[:format] %>
-                <% when :currency %><%= number_to_currency(metric[:value], unit: "R$", separator: ",", delimiter: ".") %>
-                <% when :percentage %><%= number_to_percentage(metric[:value], precision: 2, strip_insignificant_zeros: true, separator: ",") %>
+                <% if metric[:format] == :currency %><%= number_to_currency(metric[:value], unit: "R$", separator: ",", delimiter: ".") %>
+                <% elsif metric[:format] == :percentage %><%= number_to_percentage(metric[:value], precision: 2, strip_insignificant_zeros: true, separator: ",") %>
                 <% else %><%= number_with_delimiter(metric[:value], delimiter: ".") %><% end %>
               </span>
               <span class="mgmt-trend mgmt-trend--<%= metric[:trend] %>">

@@ -1,8 +1,9 @@
 require "test_helper"
 
 class BolsaoControllerTest < ActionDispatch::IntegrationTest
-  test "should get index" do
-    get bolsao_index_url
-    assert_response :success
+  include RetiredRoutes
+
+  test "retired bolsao index is not exposed" do
+    assert_retired_route :get, "/bolsao/index"
   end
 end

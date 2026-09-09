@@ -1,48 +1,39 @@
 require "test_helper"
 
 class PropostaControllerTest < ActionDispatch::IntegrationTest
+  include RetiredRoutes
+
   setup do
-    @propostum = proposta(:one)
+    frete = create_test_frete
+    @record = Proposta.create!(frete: frete, cliente_id: frete.cliente_id,
+                               transportador: frete.transportador, valor: 100, descricao: "Teste")
   end
 
-  test "should get index" do
-    get proposta_index_url
-    assert_response :success
+  test "retired index is not exposed" do
+    assert_retired_route :get, "/proposta", record: @record
   end
 
-  test "should get new" do
-    get new_propostum_url
-    assert_response :success
+  test "retired new form is not exposed" do
+    assert_retired_route :get, "/proposta/new", record: @record
   end
 
-  test "should create propostum" do
-    assert_difference("Proposta.count") do
-      post proposta_index_url, params: { propostum: { frete_id: @propostum.frete_id, observacao: @propostum.observacao, transportador_id: @propostum.transportador_id, valor_proposto: @propostum.valor_proposto } }
-    end
-
-    assert_redirected_to propostum_url(Proposta.last)
+  test "retired create cannot insert a proposal" do
+    assert_retired_route :post, "/proposta", params: { propostum: { valor_proposto: 200 } }, record: @record
   end
 
-  test "should show propostum" do
-    get propostum_url(@propostum)
-    assert_response :success
+  test "retired show does not expose an existing proposal" do
+    assert_retired_route :get, "/proposta/#{@record.id}", record: @record
   end
 
-  test "should get edit" do
-    get edit_propostum_url(@propostum)
-    assert_response :success
+  test "retired edit form is not exposed" do
+    assert_retired_route :get, "/proposta/#{@record.id}/edit", record: @record
   end
 
-  test "should update propostum" do
-    patch propostum_url(@propostum), params: { propostum: { frete_id: @propostum.frete_id, observacao: @propostum.observacao, transportador_id: @propostum.transportador_id, valor_proposto: @propostum.valor_proposto } }
-    assert_redirected_to propostum_url(@propostum)
+  test "retired update leaves the proposal unchanged" do
+    assert_retired_route :patch, "/proposta/#{@record.id}", params: { propostum: { valor_proposto: 200 } }, record: @record
   end
 
-  test "should destroy propostum" do
-    assert_difference("Proposta.count", -1) do
-      delete propostum_url(@propostum)
-    end
-
-    assert_redirected_to proposta_index_url
+  test "retired destroy preserves the proposal" do
+    assert_retired_route :delete, "/proposta/#{@record.id}", record: @record
   end
 end

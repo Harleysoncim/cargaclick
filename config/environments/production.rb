@@ -53,7 +53,7 @@ Rails.application.configure do
   # =========================================================
   # STORAGE
   # =========================================================
-  config.active_storage.service = :local
+  config.active_storage.service = ENV["FLY_APP_NAME"].present? ? :fly_volume : :local
 
   # =========================================================
   # ACTION MAILER
@@ -74,5 +74,5 @@ Rails.application.configure do
   # =========================================================
   # SEGURANÇA
   # =========================================================
-  config.require_master_key = true
+  config.require_master_key = ENV["CARGACLICK_ASSET_BUILD"] != "1" || ENV["FLY_APP_NAME"].present?
 end

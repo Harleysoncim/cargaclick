@@ -26,12 +26,12 @@ class Frete < ApplicationRecord
     cancelado:    "cancelado"
   }, _prefix: :frete
 
-  # Coluna: status_pagamento (integer)
+  # Coluna: status_pagamento (string)
   enum status_pagamento: {
-    aguardando: 0,
-    pago:       1,
-    liberado:   2,
-    cancelado:  3
+    aguardando: "aguardando",
+    pago:       "pago",
+    liberado:   "liberado",
+    cancelado:  "cancelado"
   }, _prefix: :pagamento
 
   # Coluna: pin_status (string)

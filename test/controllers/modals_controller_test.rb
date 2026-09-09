@@ -1,48 +1,37 @@
 require "test_helper"
 
 class ModalsControllerTest < ActionDispatch::IntegrationTest
+  include RetiredRoutes
+
   setup do
-    @modal = modals(:one)
+    @record = Modal.create!(nome: "Rodoviário Teste")
   end
 
-  test "should get index" do
-    get modals_url
-    assert_response :success
+  test "retired index is not exposed" do
+    assert_retired_route :get, "/modals", record: @record
   end
 
-  test "should get new" do
-    get new_modal_url
-    assert_response :success
+  test "retired new form is not exposed" do
+    assert_retired_route :get, "/modals/new", record: @record
   end
 
-  test "should create modal" do
-    assert_difference("Modal.count") do
-      post modals_url, params: { modal: { nome: @modal.nome } }
-    end
-
-    assert_redirected_to modal_url(Modal.last)
+  test "retired create cannot insert a modal" do
+    assert_retired_route :post, "/modals", params: { modal: { nome: "Indevido" } }, record: @record
   end
 
-  test "should show modal" do
-    get modal_url(@modal)
-    assert_response :success
+  test "retired show does not expose an existing modal" do
+    assert_retired_route :get, "/modals/#{@record.id}", record: @record
   end
 
-  test "should get edit" do
-    get edit_modal_url(@modal)
-    assert_response :success
+  test "retired edit form is not exposed" do
+    assert_retired_route :get, "/modals/#{@record.id}/edit", record: @record
   end
 
-  test "should update modal" do
-    patch modal_url(@modal), params: { modal: { nome: @modal.nome } }
-    assert_redirected_to modal_url(@modal)
+  test "retired update leaves the modal unchanged" do
+    assert_retired_route :patch, "/modals/#{@record.id}", params: { modal: { nome: "Indevido" } }, record: @record
   end
 
-  test "should destroy modal" do
-    assert_difference("Modal.count", -1) do
-      delete modal_url(@modal)
-    end
-
-    assert_redirected_to modals_url
+  test "retired destroy preserves the modal" do
+    assert_retired_route :delete, "/modals/#{@record.id}", record: @record
   end
 end

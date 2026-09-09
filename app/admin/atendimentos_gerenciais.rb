@@ -34,6 +34,6 @@ ActiveAdmin.register_page "Atendimentos Gerenciais" do
   end
 
   content title: "Atendimentos Gerenciais" do
-    render partial: "admin/atendimentos_gerenciais/dashboard", locals: { dashboard: @management_metrics }
+    render partial: "admin/atendimentos_gerenciais/dashboard", locals: { dashboard: assigns[:management_metrics] }
   end
 end

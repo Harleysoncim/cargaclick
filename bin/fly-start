@@ -1,0 +1,20 @@
+#!/usr/bin/env bash
+set -euo pipefail
+: "${DATABASE_URL:?DATABASE_URL is required}"
+: "${SECRET_KEY_BASE:?SECRET_KEY_BASE is required}"
+: "${RAILS_MASTER_KEY:?RAILS_MASTER_KEY is required}"
+mountpoint -q /data || {
+  echo 'Persistent volume is not mounted at /data.' >&2
+  exit 1
+}
+if [ "$(id -u)" = 0 ]; then
+  mkdir -p /data/storage
+  chown rails:rails /data/storage
+  exec runuser -u rails -- bash bin/fly-start
+fi
+test -d /data/storage && test -w /data/storage || {
+  echo 'Active Storage volume must contain a writable /data/storage directory.' >&2
+  exit 1
+}
+mkdir -p tmp/pids log
+exec bundle exec puma -C config/puma.rb

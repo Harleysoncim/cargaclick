@@ -2,7 +2,7 @@ name: Playwright Tests
 
 on:
   push:
-    branches: [main, master]
+    branches: [main, master, feature/seguro-carga-qrcode-nfe]
   pull_request:
     branches: [main, master]
 
@@ -52,7 +52,7 @@ jobs:
         run: yarn playwright install --with-deps chromium
       - name: Prepare test database and assets
         run: |
-          bundle exec rails db:migrate
+          bundle exec rails db:schema:load
           yarn build
       - name: Verify Zeitwerk
         run: bundle exec rails zeitwerk:check

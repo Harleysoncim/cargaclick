@@ -1,13 +1,13 @@
 require "test_helper"
 
 class PropostasControllerTest < ActionDispatch::IntegrationTest
-  test "should get nova" do
-    get propostas_nova_url
-    assert_response :success
+  include RetiredRoutes
+
+  test "retired nova URL is not exposed" do
+    assert_retired_route :get, "/propostas/nova"
   end
 
-  test "should get create" do
-    get propostas_create_url
-    assert_response :success
+  test "retired create URL does not create proposals through GET" do
+    assert_retired_route :get, "/propostas/create"
   end
 end

@@ -26,7 +26,7 @@ class AdminAtendimentosGerenciaisTest < ActionDispatch::IntegrationTest
     admin = AdminUser.create!(email: "gestor.api@example.com", password: "senha-segura")
     sign_in admin
 
-    get data_admin_atendimentos_gerenciais_path, params: { period: "custom", start_date: "2026-09-01", end_date: "2026-08-01" }
+    get admin_atendimentos_gerenciais_data_path, params: { period: "custom", start_date: "2026-09-01", end_date: "2026-08-01" }
 
     assert_response :unprocessable_entity
     assert_match(/data inicial/, response.parsed_body.fetch("error"))

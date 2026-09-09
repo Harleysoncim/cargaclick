@@ -11,7 +11,9 @@ development:
 
 test:
   <<: *default
-  database: cargaclick_test
+  # Sobrescrevivel para quem nao e dono do banco cargaclick_test compartilhado
+  # (ver "Rodando os testes" no README). Sem a variavel, o padrao nao muda.
+  database: <%= ENV.fetch("CARGACLICK_TEST_DATABASE", "cargaclick_test") %>
 
 production:
   <<: *default

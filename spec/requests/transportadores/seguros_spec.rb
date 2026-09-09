@@ -29,16 +29,28 @@ RSpec.describe "Transportadores cargo insurance", type: :request do
   it "saves the choice to proceed without insurance" do
     sign_in transportador
     patch transportadores_frete_seguro_path(frete), params: { decision: "sem_seguro" }
+    expect(response).to redirect_to(transportadores_frete_seguro_path(frete))
     expect(frete.reload).to have_attributes(seguro_carga: false, seguro_status: "recusado")
   end
 
   it "does not accept financial quote fields from the browser" do
     sign_in transportador
     patch transportadores_frete_seguro_path(frete), params: {
-      frete: { seguro_valor_premio: "1.00", seguro_numero_cotacao: "FAKE", seguro_seguradora: "Fake" }
+      frete: {
+        seguro_valor_carga: "500.00",
+        seguro_valor_premio: "1.00", seguro_numero_cotacao: "FAKE", seguro_seguradora: "Fake"
+      }
     }
-    expect(frete.reload.seguro_valor_premio).to be_nil
+    # O redirect e o campo permitido provam que o update foi de fato aceito.
+    # Sem isso o teste passa mesmo quando o update falha por inteiro, pois os
+    # campos financeiros continuariam nil por nunca terem sido gravados.
+    expect(response).to redirect_to(transportadores_frete_seguro_path(frete))
+    expect(frete.reload.seguro_status).to eq("aguardando_dados")
+    expect(frete.seguro_valor_carga).to eq(500)
+
+    expect(frete.seguro_valor_premio).to be_nil
     expect(frete.seguro_numero_cotacao).to be_nil
+    expect(frete.seguro_seguradora).to be_nil
   end
 
   it "deduplicates a quote already awaiting analysis" do

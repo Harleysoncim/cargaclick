@@ -108,6 +108,19 @@ ghp_*
 # Segurança extra (defesa em profundidade)
 # ===============================================================
 
+# Compromised private-key filenames: keep out of the current index.
+/DeployRender
+/harleyjosesoncim
+/1234
+/.corepack/
+/cargaclick_repo/
+__pycache__/
+*.pyc
+*.pem
+*.p12
+*.pfx
+*.key
+
 /tmp/*
 !/tmp/.keep
 /log/*

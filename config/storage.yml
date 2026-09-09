@@ -2,6 +2,11 @@ test:
   service: Disk
   root: <%= Rails.root.join("tmp/storage") %>
 
+# Persistent Fly Volume; never the ephemeral Machine root filesystem.
+fly_volume:
+  service: Disk
+  root: /data/storage
+
 local:
   service: Disk
   root: <%= Rails.root.join("storage") %>

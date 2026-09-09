@@ -56,3 +56,54 @@ bundle exec rails zeitwerk:check
 bundle exec rails runner 'puts :ok'
 git diff --check
 ```
+
+## Rodando os testes
+
+A suíte usa PostgreSQL e conecta pelo socket Unix como o usuário do sistema
+(sem `username`/`password` em `config/database.yml`). Se o banco `cargaclick_test`
+já existir e pertencer a **outro** role — tipicamente `postgres`, quando foi criado
+com `sudo -u postgres createdb` — a suíte aborta no carregamento com:
+
+```
+ActiveRecord::StatementInvalid: PG::InsufficientPrivilege:
+  ERROR:  permission denied for table ar_internal_metadata
+```
+
+O erro é de permissão, não de schema: o seu usuário não é dono das tabelas.
+Há dois caminhos.
+
+### Opção 1 — usar um banco de teste próprio (não exige sudo)
+
+Basta ter o atributo `CREATEDB` no seu role. Escolha um nome só seu e aponte a
+suíte para ele com `CARGACLICK_TEST_DATABASE`:
+
+```sh
+createdb cargaclick_test_local
+
+export CARGACLICK_TEST_DATABASE=cargaclick_test_local
+bundle exec rails db:schema:load RAILS_ENV=test
+bundle exec rails db:migrate    RAILS_ENV=test
+bundle exec rspec
+```
+
+### Opção 2 — tomar posse do banco compartilhado (exige sudo)
+
+```sh
+sudo -u postgres psql -c "ALTER DATABASE cargaclick_test OWNER TO \"$(whoami)\";"
+sudo -u postgres psql -d cargaclick_test \
+  -c "REASSIGN OWNED BY postgres TO \"$(whoami)\";"
+```
+
+Depois disso `bundle exec rspec` funciona sem variável de ambiente.
+
+### Nota para quem desenvolve no Windows
+
+O `Gemfile.lock` fixa `PLATFORMS: x86_64-linux` — `pg`, `nokogiri` e `ffi` estão
+travados em binários Linux. Rodar a suíte no Windows nativo exigiria adicionar a
+plataforma `x86_64-mingw-ucrt` ao lock, um toolchain MSYS2 completo e libpq.
+Use WSL:
+
+```sh
+wsl -d Ubuntu -- bash -lc 'cd /mnt/c/caminho/para/cargaclick_repo && \
+  CARGACLICK_TEST_DATABASE=cargaclick_test_local bundle exec rspec'
+```

@@ -41,7 +41,7 @@ class Admin::ManagementMetricsTest < ActiveSupport::TestCase
 
   test "calculates revenue ticket and completed operations from persisted data" do
     timestamp = Time.zone.parse("2026-08-10 10:00")
-    cliente = Cliente.create!(nome: "Cliente Métricas", email: "metricas@example.com", password: "senha-segura", status_cadastro: :completo)
+    cliente = Cliente.create!(nome: "Cliente Métricas", email: "metricas@example.com", password: "senha-segura", cpf: "00000000000", status_cadastro: :completo)
     transportador = Transportador.create!(nome: "Transportador Métricas", email: "transportador.metricas@example.com", password: "senha-segura")
     frete_id = Frete.insert_all!([{
       cliente_id: cliente.id, transportador_id: transportador.id, origem: "A", destino: "B",

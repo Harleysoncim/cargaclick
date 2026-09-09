@@ -8,6 +8,8 @@ Rails.application.config.assets.paths << Rails.root.join("app/assets/builds")
 
 # Manifests extras além de application.(css|js)
 Rails.application.config.assets.precompile += %w[
+  active_admin.css
+  active_admin.js
   tailwind.css
   leaflet.css
   inter-font.css

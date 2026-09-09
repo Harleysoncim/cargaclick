@@ -1,0 +1,27 @@
+name: Validate Fly image
+
+on:
+  push:
+    branches: [feature/seguro-carga-qrcode-nfe]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  image:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build restricted Fly image
+        run: docker build --file Dockerfile.fly --tag cargaclick-ci:check .
+      - name: Inspect every image layer and test production startup
+        run: python3 test/docker/verify.py cargaclick-ci:check
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: fly-image-validation
+          path: tmp/docker-validation.json
+          if-no-files-found: ignore
+          retention-days: 14

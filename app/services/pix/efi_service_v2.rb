@@ -60,7 +60,7 @@ module Pix
         pix_txid:           response["txid"],
         pix_qr_code:        response.dig("loc", "qrcode"),
         pix_copia_cola:     response.dig("pixCopiaECola"),
-        status_pagamento:   "aguardando_pagamento"
+        status_pagamento:   "aguardando"
       )
     end
 
