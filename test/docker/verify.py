@@ -38,7 +38,8 @@ def run(args, *, input=None, check=True):
 
 def patterns(data):
     rules = {
-        'private_key': rb'-----BEGIN (?:[A-Z0-9]+ )*PRIVATE KEY-----',
+        # MIME detection tables contain isolated PEM header strings, not keys.
+        'private_key': rb'-----BEGIN ((?:[A-Z0-9]+ )*PRIVATE KEY)-----[ \t]*\r?\n(?:[A-Za-z0-9+/=,: -]+\r?\n|\r?\n)+-----END \1-----',
         'github_token': rb'\b(?:gh[pousr]_[A-Za-z0-9]{30,}|github_pat_[A-Za-z0-9_]{50,})',
         'api_token': rb'\b(?:sk-(?:proj-)?[A-Za-z0-9_-]{40,}|AKIA[A-Z0-9]{16}|xox[baprs]-[A-Za-z0-9-]{20,})',
     }
@@ -49,6 +50,7 @@ def inspect():
     findings = []
     layers = 0
     files = 0
+    public_certificates = 0
     with tempfile.TemporaryDirectory(prefix='cargaclick-image-') as folder:
         archive = str(Path(folder) / 'image.tar')
         run(['image', 'save', '--output', archive, IMAGE])
@@ -62,18 +64,24 @@ def inspect():
                     with tarfile.open(fileobj=outer.extractfile(layer), mode='r|*') as inner:
                         for member in inner:
                             name = member.name.removeprefix('./')
-                            if not member.isfile() or not name.startswith('app/'):
+                            if not member.isfile() or not name.startswith(('app/', 'usr/local/bundle/')):
                                 continue
                             files += 1
+                            data = inner.extractfile(member).read()
                             forbidden = re.search(r'(^|/)(DeployRender|harleyjosesoncim|1234|local_secret\.txt|\.env(?:\..*)?|\.git|master[^/]*\.key)(/|$)', name)
                             forbidden = forbidden or re.search(r'\.(pem|p12|pfx|key|sqlite3|dump|log|bak|zip)$', name)
-                            if forbidden:
-                                findings.append({'layer': layers, 'kind': 'forbidden_path'})
+                            # Public signing certificates shipped by gems are not private credentials.
+                            public_certificate = name.startswith('usr/local/bundle/') and name.endswith('.pem') and data.strip().startswith(b'-----BEGIN CERTIFICATE-----') and data.strip().endswith(b'-----END CERTIFICATE-----') and not patterns(data)
+                            if public_certificate:
+                                public_certificates += 1
+                            safe_name = re.sub(r'(?:gh[pousr]_|github_pat_)[A-Za-z0-9_]+', '[REDACTED]', name)
+                            if forbidden and not public_certificate:
+                                findings.append({'layer': layers, 'file': safe_name, 'kind': 'forbidden_path'})
                             if not name.endswith('.enc'):
-                                data = inner.extractfile(member).read()
-                                findings.extend({'layer': layers, 'kind': kind} for kind in patterns(data))
-    report['inspection'] = {'layers': layers, 'application_files': files, 'findings': findings,
-                            'scope': 'metadata and application contents in every layer, including deleted files'}
+                                findings.extend({'layer': layers, 'file': safe_name, 'kind': kind} for kind in patterns(data))
+    report['inspection'] = {'layers': layers, 'application_and_gem_files': files, 'findings': findings,
+                            'public_signing_certificates': public_certificates,
+                            'scope': 'metadata, application and gems in every layer, including deleted files'}
     if findings:
         raise RuntimeError('Sensitive material found in image layers; no values printed')
 

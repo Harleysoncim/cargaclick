@@ -2,7 +2,7 @@
 FROM node:22-bookworm-slim AS node
 FROM ruby:3.2.4-slim-bookworm AS build
 WORKDIR /app
-ENV RAILS_ENV=production BUNDLE_WITHOUT=development:test BUNDLE_DEPLOYMENT=1
+ENV RAILS_ENV=production BUNDLE_WITHOUT=development:test BUNDLE_DEPLOYMENT=1 BUNDLE_PATH=/usr/local/bundle
 RUN apt-get update -qq && apt-get install -y --no-install-recommends build-essential git libpq-dev libvips pkg-config \
     && rm -rf /var/lib/apt/lists/*
 COPY --from=node /usr/local/bin/node /usr/local/bin/node
@@ -10,7 +10,12 @@ COPY --from=node /usr/local/lib/node_modules /usr/local/lib/node_modules
 RUN ln -s /usr/local/lib/node_modules/npm/bin/npm-cli.js /usr/local/bin/npm \
     && npm install --global yarn@1.22.22
 COPY Gemfile Gemfile.lock ./
-RUN gem install bundler -v 2.7.2 --no-document && bundle install
+RUN gem install bundler -v 2.7.2 --no-document && bundle install \
+    && rm -rf /usr/local/bundle/cache /usr/local/bundle/ruby/*/cache \
+    && for gem_dir in /usr/local/bundle/gems/* /usr/local/bundle/ruby/*/gems/*; do \
+         rm -rf "$gem_dir/test" "$gem_dir/spec" "$gem_dir/features"; \
+         rm -f "$gem_dir/README" "$gem_dir/README.md" "$gem_dir/README.rdoc"; \
+       done
 COPY package.json yarn.lock ./
 RUN yarn install --frozen-lockfile --production=false
 COPY . .
@@ -22,7 +27,7 @@ RUN mkdir -p app/assets/builds tmp/pids log storage \
 
 FROM ruby:3.2.4-slim-bookworm
 WORKDIR /app
-ENV RAILS_ENV=production RACK_ENV=production BUNDLE_WITHOUT=development:test BUNDLE_DEPLOYMENT=1 \
+ENV RAILS_ENV=production RACK_ENV=production BUNDLE_WITHOUT=development:test BUNDLE_DEPLOYMENT=1 BUNDLE_PATH=/usr/local/bundle \
     RAILS_LOG_TO_STDOUT=1 RAILS_SERVE_STATIC_FILES=1 PORT=8080
 RUN apt-get update -qq && apt-get install -y --no-install-recommends libpq5 libvips tzdata curl util-linux \
     && rm -rf /var/lib/apt/lists/* \
