@@ -92,7 +92,16 @@ def smoke():
     db = network + '-db'
     web = network + '-web'
     created = []
+    credentials = tempfile.TemporaryDirectory(prefix='cargaclick-test-credentials-')
     try:
+        # A random master key cannot decrypt the repository's real ciphertext.
+        # Mount a matching synthetic encrypted file for this isolated test only.
+        generator = "ActiveSupport::EncryptedFile.new(content_path: '/validation/credentials.yml.enc', key_path: '/validation/unused.key', env_key: 'RAILS_MASTER_KEY', raise_if_missing_key: true).write(\"{}\\n\")"
+        run(['run', '--rm', '--network', 'none', '-e', 'RAILS_MASTER_KEY',
+             '--mount', 'type=bind,src=' + credentials.name + ',dst=/validation', IMAGE,
+             'bundle', 'exec', 'ruby', '-r', 'active_support', '-r', 'active_support/encrypted_file', '-e', generator])
+        encrypted_path = str(Path(credentials.name) / 'credentials.yml.enc')
+        os.chmod(encrypted_path, 0o644)
         run(['network', 'create', '--internal', network])
         created.append(('network', network))
         run(['run', '-d', '--name', db, '--network', network, '--tmpfs', '/var/lib/postgresql/data',
@@ -105,6 +114,7 @@ def smoke():
         else:
             raise RuntimeError('Isolated database not ready')
         args = ['--network', network, '-e', 'DATABASE_URL=postgresql://postgres@' + db + '/cargaclick_image_validation',
+                '--mount', 'type=bind,src=' + encrypted_path + ',dst=/app/config/credentials.yml.enc,readonly',
                 '-e', 'SECRET_KEY_BASE', '-e', 'RAILS_MASTER_KEY', '-e', 'SMOKE_PASSWORD',
                 '-e', 'FLY_APP_NAME=cargaclick-ci', '-e', 'FORCE_SSL=true', '-e', 'WEB_CONCURRENCY=1']
         run(['run', '--rm', *args, '-e', 'DISABLE_DATABASE_ENVIRONMENT_CHECK=1', IMAGE,
@@ -123,9 +133,11 @@ def smoke():
                      input=Path('test/docker/smoke.rb').read_text())
         report['smoke'] = json.loads(next(line.removeprefix('SMOKE_REPORT=') for line in
                                           result.stdout.splitlines() if line.startswith('SMOKE_REPORT=')))
+        report['smoke']['credentials'] = 'matching synthetic encrypted credentials mounted read-only; no production secrets'
     finally:
         for kind, name in reversed(created):
             run(['network', 'rm', name] if kind == 'network' else ['rm', '-f', name], check=False)
+        credentials.cleanup()
 
 
 try:
