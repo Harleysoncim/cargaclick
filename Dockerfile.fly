@@ -15,7 +15,8 @@ RUN gem install bundler -v 2.7.2 --no-document && bundle install \
     && for gem_dir in /usr/local/bundle/gems/* /usr/local/bundle/ruby/*/gems/*; do \
          rm -rf "$gem_dir/test" "$gem_dir/spec" "$gem_dir/features"; \
          rm -f "$gem_dir/README" "$gem_dir/README.md" "$gem_dir/README.rdoc"; \
-       done
+       done \
+    && find /usr/local/bundle -type f \( -name '*.log' -o -name gem_make.out \) -delete
 COPY package.json yarn.lock ./
 RUN yarn install --frozen-lockfile --production=false
 COPY . .
