@@ -12,7 +12,7 @@
       </li>
       <li>/</li>
       <li>
-        <%= link_to "Simular Frete", new_frete_path, class: "hover:text-blue-600 transition" %>
+        <%= link_to "Simular Frete", simular_frete_path, class: "hover:text-blue-600 transition" %>
       </li>
       <li>/</li>
       <li class="font-semibold text-gray-700 dark:text-gray-200">
@@ -54,6 +54,15 @@
 
       </div>
 
+      <dl class="mt-6 space-y-3" data-testid="simulation-breakdown">
+        <div><dt class="font-semibold">Peso (kg)</dt><dd><%= number_with_delimiter(@resultado[:peso], separator: ",", delimiter: ".") %></dd></div>
+        <div><dt class="font-semibold">Volume (m³)</dt><dd><%= number_with_delimiter(@resultado[:volume], separator: ",", delimiter: ".") %></dd></div>
+        <% if @resultado[:breakdown].present? %>
+          <div><dt class="font-semibold">Subtotal por distância</dt><dd><%= number_to_currency(@resultado[:breakdown][:subtotal_km], unit: "R$ ", separator: ",", delimiter: ".") %></dd></div>
+          <div><dt class="font-semibold">Tarifa mínima</dt><dd><%= number_to_currency(@resultado[:breakdown][:taxa_minima], unit: "R$ ", separator: ",", delimiter: ".") %></dd></div>
+        <% end %>
+      </dl>
+
       <!-- =========================
            VALOR FINAL (COMPETITIVO)
       ========================== -->
@@ -85,7 +94,7 @@
       <div class="mt-8 flex flex-col md:flex-row gap-4">
 
         <%= link_to "Nova simulação",
-          new_frete_path,
+          simular_frete_path,
           class: "flex-1 text-center px-6 py-3 rounded-xl bg-gray-100 hover:bg-gray-200 text-gray-700 font-semibold transition" %>
 
         <% if cliente_signed_in? %>
@@ -124,7 +133,7 @@
 
       <div class="mt-6">
         <%= link_to "Voltar",
-          new_frete_path,
+          simular_frete_path,
           class: "px-6 py-3 rounded-xl bg-gray-100 hover:bg-gray-200 text-gray-700 font-semibold" %>
       </div>
 

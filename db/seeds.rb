@@ -5,7 +5,6 @@ Cliente.find_or_create_by!(email: "master.cliente@cargaclick.com") do |c|
   c.nome = "Master Cliente"
   c.password = "12345678"
   c.password_confirmation = "12345678"
-  c.confirmed_at = Time.current
 end
 puts "✅ Cliente Master criado ou já existia"
 
@@ -22,7 +21,6 @@ puts "✅ Transportador Master criado ou já existia"
 
 # === Usuário master Admin ====================================
 AdminUser.find_or_create_by!(email: "master.admin@cargaclick.com") do |a|
-  a.nome = "Master Admin"
   a.password = "Admin123!"
   a.password_confirmation = "Admin123!"
   a.confirmed_at = Time.current if a.respond_to?(:confirmed_at)
@@ -30,7 +28,3 @@ end
 puts "✅ Admin Master criado ou já existia"
 
 AdminUser.create!(email: 'admin@example.com', password: 'password', password_confirmation: 'password') if Rails.env.development?
-User.find_or_create_by!(email: 'teste@cargaclick.com') do |u|
-  u.password = '123456'
-  u.password_confirmation = '123456'
-end

@@ -1,4 +1,5 @@
 require "test_helper"
+require "minitest/mock"
 
 class FretesControllerTest < ActionDispatch::IntegrationTest
   test "simulation form exposes editable decimal fields" do
@@ -28,5 +29,8 @@ class FretesControllerTest < ActionDispatch::IntegrationTest
     assert_response :success
     assert_select "body", /São Paulo/
     assert_select "body", /Santos/
+    assert_select "[data-testid=simulation-breakdown]", /10,5/
+    assert_select "[data-testid=simulation-breakdown]", /1,25/
+    assert_select "body", /250,00/
   end
 end
