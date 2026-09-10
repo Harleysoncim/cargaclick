@@ -8,7 +8,9 @@ module MercadoPagoConfig
       ENV["MP_ACCESS_TOKEN"].presence ||
       begin
         Rails.application.credentials.dig(:mercadopago, :access_token)
-      rescue StandardError
+      rescue ActiveSupport::MessageEncryptor::InvalidMessage,
+             ActiveSupport::EncryptedFile::MissingContentError,
+             ArgumentError
         nil
       end
 

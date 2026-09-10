@@ -19,6 +19,7 @@ primary_region = "gru"
   FORCE_SSL = "true"
   APP_HOST = "cargaclick.fly.dev"
   APP_URL = "https://cargaclick.fly.dev"
+  CARGACLICK_REQUIRE_MASTER_KEY = "0"
   # Enable only after the target database and migration are approved.
   FLY_MIGRATIONS_ENABLED = "false"
 

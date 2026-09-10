@@ -2,7 +2,9 @@
 set -euo pipefail
 : "${DATABASE_URL:?DATABASE_URL is required}"
 : "${SECRET_KEY_BASE:?SECRET_KEY_BASE is required}"
-: "${RAILS_MASTER_KEY:?RAILS_MASTER_KEY is required}"
+if [ "${CARGACLICK_REQUIRE_MASTER_KEY:-0}" = "1" ]; then
+  : "${RAILS_MASTER_KEY:?RAILS_MASTER_KEY is required when CARGACLICK_REQUIRE_MASTER_KEY=1}"
+fi
 mountpoint -q /data || {
   echo 'Persistent volume is not mounted at /data.' >&2
   exit 1

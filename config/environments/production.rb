@@ -74,5 +74,5 @@ Rails.application.configure do
   # =========================================================
   # SEGURANÇA
   # =========================================================
-  config.require_master_key = ENV["CARGACLICK_ASSET_BUILD"] != "1" || ENV["FLY_APP_NAME"].present?
+  config.require_master_key = ENV["CARGACLICK_REQUIRE_MASTER_KEY"] == "1"
 end

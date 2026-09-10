@@ -49,7 +49,16 @@ class GptService
       base:  -> { ENV["AI_BASE_URL"].presence || ENV.fetch("OPENAI_BASE_URL", "https://api.openai.com") },
       path:  -> { "/v1/chat/completions" },
       model: -> { ENV["AI_MODEL"].presence || ENV.fetch("OPENAI_MODEL", "gpt-4o-mini") },
-      key:   -> { ENV["OPENAI_API_KEY"] || Rails.application.credentials.dig(:openai, :api_key) }
+      key:   -> {
+        ENV["OPENAI_API_KEY"].presence ||
+          begin
+            Rails.application.credentials.dig(:openai, :api_key)
+          rescue ActiveSupport::MessageEncryptor::InvalidMessage,
+                 ActiveSupport::EncryptedFile::MissingContentError,
+                 ArgumentError
+            nil
+          end
+      }
     },
     "groq" => {
       require_key: true,

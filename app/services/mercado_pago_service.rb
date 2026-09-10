@@ -7,6 +7,8 @@ class MercadoPagoService
 
   # Cria uma preferência de pagamento no MP
   def criar_preferencia(pagamento)
+    return nil unless @sdk
+
     preference_data = {
       items: [
         {
@@ -40,6 +42,8 @@ class MercadoPagoService
 
   # Consulta status de pagamento
   def consultar_pagamento(mp_payment_id)
+    return nil unless @sdk
+
     result = @sdk.payment.get(mp_payment_id)
     result["response"] if result["status"] == "200"
   end

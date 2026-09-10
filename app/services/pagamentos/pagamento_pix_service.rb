@@ -16,7 +16,10 @@ module Pagamentos
     def call
       validate!
 
-      sdk = MercadoPago::SDK.new(ENV.fetch("MERCADO_PAGO_ACCESS_TOKEN"))
+      token = ENV["MP_ACCESS_TOKEN"].presence || ENV["MERCADO_PAGO_ACCESS_TOKEN"].presence
+      raise Error, "Mercado Pago indisponível: MP_ACCESS_TOKEN ausente" if token.blank?
+
+      sdk = MercadoPago::SDK.new(token)
       payment = sdk.payment
 
       response = payment.create(payload)

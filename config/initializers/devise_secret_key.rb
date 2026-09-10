@@ -9,7 +9,7 @@ Devise.setup do |config|
   if key.blank?
     begin
       key = Rails.application.credentials.dig(:devise, :secret_key)
-    rescue ActiveSupport::MessageEncryptor::InvalidMessage, ArgumentError
+    rescue ActiveSupport::MessageEncryptor::InvalidMessage, ActiveSupport::EncryptedFile::MissingContentError, ArgumentError
       key = nil
     end
   end
