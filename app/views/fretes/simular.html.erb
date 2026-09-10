@@ -64,7 +64,7 @@
             Valor final do frete
           </span>
           <span class="text-3xl font-extrabold text-green-600">
-            R$ <%= number_to_currency(@resultado[:valor], unit: "", separator: ",", delimiter: ".") %>
+            R$ <%= number_to_currency(@resultado[:valor_total], unit: "", separator: ",", delimiter: ".") %>
           </span>
         </div>
 
@@ -98,7 +98,7 @@
                 destino: @resultado[:destino],
                 peso: @resultado[:peso],
                 volume: @resultado[:volume],
-                valor: @resultado[:valor]
+                valor: @resultado[:valor_total]
               }
             },
             class: "flex-1 bg-green-600 hover:bg-green-700 text-white font-bold py-3 rounded-xl transition shadow" %>

@@ -4,6 +4,7 @@
 require "net/http"
 require "json"
 require "uri"
+require "bigdecimal"
 
 class CalcularFrete
   class ServicoDeRotasIndisponivel < StandardError; end
@@ -30,6 +31,7 @@ class CalcularFrete
     @origem       = normalizar_texto(params[:origem])
     @destino      = normalizar_texto(params[:destino])
     @peso         = normalizar_numero(params[:peso])
+    @volume       = normalizar_numero(params[:volume])
     @tipo_veiculo = normalizar_texto(params[:tipo_veiculo]).presence || "carro"
     @tipo_carga   = normalizar_texto(params[:tipo_carga]).presence   || "Não informado"
   end
@@ -49,6 +51,8 @@ class CalcularFrete
       destino: @destino,
       tipo_veiculo: @tipo_veiculo.capitalize,
       tipo_carga: @tipo_carga,
+      peso: @peso,
+      volume: @volume,
       distancia_km: distancia_km.round(2),
       tempo_estimado: estimar_tempo(distancia_km),
       valor_total: breakdown[:valor_final],
@@ -71,9 +75,13 @@ class CalcularFrete
   end
 
   def normalizar_numero(valor)
-    Float(valor)
-  rescue
-    0.0
+    texto = valor.to_s.strip
+    return nil if texto.empty?
+    return nil unless texto.match?(/\A(?:\d+(?:[\.,]\d+)?|[\.,]\d+)\z/)
+
+    BigDecimal(texto.tr(",", "."))
+  rescue ArgumentError
+    nil
   end
 
   # ==================================================
@@ -83,7 +91,8 @@ class CalcularFrete
     erros = []
     erros << "Origem inválida"  if @origem.blank?
     erros << "Destino inválido" if @destino.blank?
-    erros << "Peso inválido"    if @peso <= 0
+    erros << "Peso deve ser um número positivo (use ponto ou vírgula para decimais)" unless @peso&.positive?
+    erros << "Volume deve ser um número positivo (use ponto ou vírgula para decimais)" unless @volume&.positive?
     erros
   end
 
@@ -148,14 +157,16 @@ class CalcularFrete
   # CÁLCULO / BREAKDOWN (AUDITÁVEL)
   # ==================================================
   def calcular_breakdown(distancia_km)
-    valor_por_km = distancia_km * PRECO_BASE_KM
+    valor_por_km = BigDecimal(distancia_km.to_s) * BigDecimal(PRECO_BASE_KM.to_s)
     valor_base   = [valor_por_km, TAXA_MINIMA].max
 
     {
-      preco_base_km: PRECO_BASE_KM,
+      preco_base_km: BigDecimal(PRECO_BASE_KM.to_s),
       distancia_km: distancia_km.round(2),
       subtotal_km: valor_por_km.round(2),
       taxa_minima: TAXA_MINIMA,
+      peso: @peso,
+      volume: @volume,
       ajuste_fidelidade: 0.0,
       comissao_plataforma: 0.0,
       valor_final: valor_base.round(2)

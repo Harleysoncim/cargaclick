@@ -61,6 +61,9 @@ class Frete < ApplicationRecord
             :valor_final,
             numericality: { greater_than_or_equal_to: 0 },
             allow_nil: true
+  validates :peso, :volume,
+            numericality: { greater_than: 0 },
+            allow_nil: true
 
   # ==========================================================
   # 🔄 CALLBACKS (ORDEM SEGURA)

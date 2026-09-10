@@ -45,7 +45,7 @@ class FretesController < ApplicationController
         "[FretesController#simular][ERRO] #{@resultado[:mensagem]} | #{@resultado[:detalhes]}"
       )
       flash[:alert] = @resultado[:mensagem] || "Não foi possível simular o frete."
-      return redirect_to simular_frete_path
+      return render :new, status: :unprocessable_entity
     end
 
     # ---------- transportadores disponíveis ----------
@@ -57,7 +57,7 @@ class FretesController < ApplicationController
 
     Rails.logger.info(
       "[FretesController#simular][OK] " \
-      "valor=#{@resultado[:valor]} " \
+      "valor=#{@resultado[:valor_total]} " \
       "transportadores=#{@transportadores.pluck(:id)}"
     )
 

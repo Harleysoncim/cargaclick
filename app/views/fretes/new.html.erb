@@ -37,6 +37,15 @@
     🔍 Dados para simulação
   </h2>
 
+  <% if defined?(@resultado) && @resultado.present? && !@resultado[:sucesso] %>
+    <div class="mb-6 rounded-xl border border-red-200 bg-red-50 p-4 text-red-700" role="alert">
+      <p class="font-semibold"><%= @resultado[:mensagem] %></p>
+      <% Array(@resultado[:detalhes]).each do |erro| %>
+        <p><%= erro %></p>
+      <% end %>
+    </div>
+  <% end %>
+
   <%# ⚠️ IMPORTANTE: usa o MESMO helper do GET e POST %>
   <%= form_with url: simular_frete_path, method: :post, local: true do %>
 
@@ -54,18 +63,20 @@
             class: "w-full rounded-xl border-gray-300 px-4 py-3
                     focus:ring-2 focus:ring-blue-500 focus:border-blue-500" %>
 
-      <%= number_field_tag :peso, params[:peso],
+      <%= label_tag :peso, "Peso (kg)", class: "sr-only" %>
+        <%= text_field_tag :peso, params[:peso],
             placeholder: "Peso (kg)",
-            min: 0,
-            step: 0.1,
+          pattern: "[0-9]+([.,][0-9]+)?",
+          required: true,
             inputmode: "decimal",
             class: "w-full rounded-xl border-gray-300 px-4 py-3
                     focus:ring-2 focus:ring-blue-500 focus:border-blue-500" %>
 
-      <%= number_field_tag :volume, params[:volume],
+      <%= label_tag :volume, "Volume (m³)", class: "sr-only" %>
+        <%= text_field_tag :volume, params[:volume],
             placeholder: "Volume (m³)",
-            min: 0,
-            step: 0.01,
+          pattern: "[0-9]+([.,][0-9]+)?",
+          required: true,
             inputmode: "decimal",
             class: "w-full rounded-xl border-gray-300 px-4 py-3
                     focus:ring-2 focus:ring-blue-500 focus:border-blue-500" %>
