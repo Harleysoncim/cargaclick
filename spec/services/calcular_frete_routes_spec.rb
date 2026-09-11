@@ -39,24 +39,23 @@ RSpec.describe CalcularFrete, "OpenRouteService JSON responses" do
     expect(result[:destino_coords]).to eq([-46.32, -23.96])
     expect(result[:breakdown]).to include(peso: BigDecimal("10.5"), volume: BigDecimal("1.25"), subtotal_km: BigDecimal("188.93"))
     expect(http).to have_received(:request).with(satisfy { |request|
-      request.path == "/v2/directions/driving-car" &&
-        request["Authorization"] == "test-only-route-key"
+      request.path == "/v2/directions/driving-car" && request["Authorization"] == "test-only-route-key"
     })
   end
 
   context "when the API returns no routes" do
     let(:route_body) { { "routes" => [] } }
 
-    it "reports unavailable routes without inventing a distance or fare" do
-      expect(described_class.call(params)).to include(sucesso: false, mensagem: /Serviço de rotas indisponível/)
+    it "reports an invalid route response without inventing a distance or fare" do
+      expect(described_class.call(params)).to include(sucesso: false, mensagem: /resposta inválida/)
     end
   end
 
   context "when the API rejects the request" do
     let(:response) { Net::HTTPForbidden.new("1.1", "403", "Forbidden") }
 
-    it "reports unavailable routes" do
-      expect(described_class.call(params)).to include(sucesso: false, mensagem: /Serviço de rotas indisponível/)
+    it "reports rejected authentication safely" do
+      expect(described_class.call(params)).to include(sucesso: false, mensagem: /recusou a autenticação/)
     end
   end
 end
