@@ -59,8 +59,8 @@ class FretesControllerTest < ActionDispatch::IntegrationTest
     assert_select "[data-route-map-canvas]"
     assert_select "[data-route-map-close]"
     assert_select "[data-route-map-data]", /LineString/
-    assert_select "body", /75,57/
-    assert_select "body", /75,0 min/
+    assert_select "body", /75[\.,]57/
+    assert_select "body", /75[\.,]0 min/
     assert_select "body", /R\$ 188,93/
   end
 end
