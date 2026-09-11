@@ -38,7 +38,7 @@ class FreightPricingService
     {
       status: "fallback",
       label: FALLBACK_LABEL,
-      source: "fórmula operacional existente; não é média nacional",
+      source: "fórmula operacional existente; tabela comercial não ativada",
       reference_date: nil,
       sample_size: 0,
       sample_status: "insufficient",

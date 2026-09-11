@@ -17,7 +17,13 @@ RSpec.describe CalcularFrete do
   let(:volume) { "1" }
 
   before do
-    allow_any_instance_of(described_class).to receive(:calcular_distancia).and_return(100.0)
+    allow_any_instance_of(described_class).to receive(:calcular_distancia).and_return(
+      distancia_km: 100.0,
+      duracao_minutos: 60.0,
+      geojson: { "type" => "LineString", "coordinates" => [[-46.63, -23.55], [-46.32, -23.96]] },
+      origem_coords: [-46.63, -23.55],
+      destino_coords: [-46.32, -23.96]
+    )
   end
 
   it "accepts integer values and preserves origin and destination" do
@@ -26,7 +32,6 @@ RSpec.describe CalcularFrete do
   end
 
   it "accepts decimal values with a point" do
-    allow_any_instance_of(described_class).to receive(:calcular_distancia).and_return(100.0)
     resultado = described_class.call(parametros.merge(peso: "10.5", volume: "1.25"))
 
     expect(resultado).to include(sucesso: true, peso: BigDecimal("10.5"), volume: BigDecimal("1.25"))
@@ -53,6 +58,8 @@ RSpec.describe CalcularFrete do
 
     http = instance_double(Net::HTTP)
     allow(http).to receive(:use_ssl=)
+    allow(http).to receive(:open_timeout=)
+    allow(http).to receive(:read_timeout=)
     allow(http).to receive(:request).and_return(response)
     allow(Net::HTTP).to receive(:new).and_return(http)
 
