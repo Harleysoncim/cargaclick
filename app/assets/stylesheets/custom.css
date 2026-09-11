@@ -72,6 +72,55 @@ body {
   @apply cursor-pointer hover:scale-110 transition-transform;
 }
 
+/* === ANIMAÇÕES =================================================== */
+
+/* Animação de flutuação — emoji da home */
+@keyframes float {
+  0%, 100% {
+    transform: translateY(0px);
+  }
+  50% {
+    transform: translateY(-12px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  @keyframes float {
+    0%, 100%, 50% {
+      transform: translateY(0px);
+    }
+  }
+}
+
+.animate-float {
+  animation: float 3s ease-in-out infinite;
+}
+
+/* Animação de entrada — fade-in com slide-up */
+@keyframes slideInUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  @keyframes slideInUp {
+    from, to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+}
+
+.animate-slideInUp {
+  animation: slideInUp 0.6s ease-out forwards;
+}
+
 /* === ALERTAS ===================================================== */
 
 .alert {
