@@ -63,6 +63,7 @@ RSpec.describe CalcularFrete do
   end
 
   it "returns a safe message when the route service has no key" do
+    allow_any_instance_of(described_class).to receive(:calcular_distancia).and_call_original
     allow(ENV).to receive(:[]).and_call_original
     allow(ENV).to receive(:[]).with("OPENROUTESERVICE_API_KEY").and_return(nil)
 
