@@ -155,7 +155,7 @@ class CalcularFrete
   end
 
   def distancia_ors(origem, destino)
-    uri = URI("https://api.openrouteservice.org/v2/directions/driving-car")
+    uri = URI("https://api.openrouteservice.org/v2/directions/driving-car/geojson")
     http = Net::HTTP.new(uri.host, uri.port)
     http.use_ssl = true
     http.open_timeout = ORS_TIMEOUT_SECONDS
@@ -165,10 +165,7 @@ class CalcularFrete
     req["Authorization"] = ENV["OPENROUTESERVICE_API_KEY"]
     req["Content-Type"]  = "application/json"
 
-    req.body = {
-      coordinates: [origem, destino],
-      geometry_format: "geojson"
-    }.to_json
+    req.body = { coordinates: [origem, destino] }.to_json
 
     res = http.request(req)
     unless res.is_a?(Net::HTTPSuccess)
@@ -183,10 +180,12 @@ class CalcularFrete
     end
 
     body = JSON.parse(res.body)
-    route = body.dig("routes", 0)
-    metros = route&.dig("summary", "distance")
-    segundos = route&.dig("summary", "duration")
-    geojson = route&.dig("geometry")
+    feature = if body["type"] == "FeatureCollection" && body["features"].is_a?(Array)
+                body["features"].find { |item| valid_geojson?(item&.dig("geometry")) }
+              end
+    metros = feature&.dig("properties", "summary", "distance")
+    segundos = feature&.dig("properties", "summary", "duration")
+    geojson = feature&.dig("geometry")
     unless metros.is_a?(Numeric) && metros.positive? && segundos.is_a?(Numeric) && segundos.positive? && valid_geojson?(geojson)
       raise ServicoDeRotasIndisponivel, :invalid_response
     end
