@@ -60,7 +60,17 @@ jobs:
       - name: Verify Zeitwerk
         run: bundle exec rails zeitwerk:check
       - name: Run RSpec
-        run: bundle exec rspec
+        run: |
+          set -o pipefail
+          bundle exec rspec 2>&1 | tee rspec.log
+      - name: Upload RSpec diagnostic
+        if: ${{ failure() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: rspec-diagnostic
+          path: rspec.log
+          if-no-files-found: ignore
+          retention-days: 7
       - name: Run Rails tests
         run: bundle exec rails test
       - name: Start Rails and wait until ready
