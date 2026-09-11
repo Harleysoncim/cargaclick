@@ -38,10 +38,10 @@ RSpec.describe CalcularFrete, "OpenRouteService JSON responses" do
     expect(result[:origem_coords]).to eq([-46.63, -23.55])
     expect(result[:destino_coords]).to eq([-46.63, -23.55])
     expect(result[:breakdown]).to include(peso: BigDecimal("10.5"), volume: BigDecimal("1.25"), subtotal_km: BigDecimal("188.93"))
-    expect(http).to have_received(:request) do |request|
-      expect(request.path).to eq("/v2/directions/driving-car")
-      expect(request["Authorization"]).to eq("test-only-route-key")
-    end
+    expect(http).to have_received(:request).with(satisfy { |request|
+      request.path == "/v2/directions/driving-car" &&
+        request["Authorization"] == "test-only-route-key"
+    })
   end
 
   context "when the API returns no routes" do
