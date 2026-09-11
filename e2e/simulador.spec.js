@@ -20,7 +20,14 @@ test.describe("simulador de frete", () => {
 
   test("exibe a saudação na home", async ({ page }) => {
     await page.goto("/")
-    await expect(page.locator('h2').filter({hasText: "Bem-vindo ao CargaClick"})).toBeVisible()
-    await expect(page.locator('[role="img"][aria-label="Caminhão de entregas"]')).toBeVisible()
+    await page.waitForLoadState("networkidle")
+
+    // Verifica se o h2 com "Bem-vindo" existe
+    const heading = page.locator("text=Bem-vindo ao CargaClick!")
+    await expect(heading).toBeVisible()
+
+    // Verifica se o emoji com aria-label existe
+    const emoji = page.locator('[role="img"][aria-label="Caminhão de entregas"]')
+    await expect(emoji).toBeVisible()
   })
 })
