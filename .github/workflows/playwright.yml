@@ -49,8 +49,8 @@ jobs:
         run: corepack enable
       - name: Install JavaScript dependencies
         run: yarn install --frozen-lockfile --non-interactive
-      - name: Install Chromium
-        run: yarn playwright install --with-deps chromium
+      - name: Install Playwright browsers
+        run: yarn playwright install --with-deps
       - name: Prepare test database and assets
         run: |
           bundle exec rails db:create
