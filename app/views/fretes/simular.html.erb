@@ -64,6 +64,22 @@
       </dl>
 
       <!-- =========================
+           INFORMAÇÕES DE PRICING
+      ========================== -->
+      <% if @resultado[:pricing].present? %>
+        <div class="mt-6 p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
+          <p class="text-sm text-blue-700 dark:text-blue-300">
+            <%= @resultado[:pricing][:label] %>
+          </p>
+          <% if @resultado[:pricing][:sample_status] == "insufficient" %>
+            <p class="text-xs text-blue-600 dark:text-blue-400 mt-1">
+              Amostra insuficiente
+            </p>
+          <% end %>
+        </div>
+      <% end %>
+
+      <!-- =========================
            VALOR FINAL (COMPETITIVO)
       ========================== -->
       <div class="mt-6 p-6 bg-gray-50 dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-700">
