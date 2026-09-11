@@ -15,9 +15,18 @@ RSpec.describe CalcularFrete do
   end
   let(:peso) { "10" }
   let(:volume) { "1" }
+  let(:rota_stub) do
+    {
+      distancia_km: 100.0,
+      duracao_minutos: 60.0,
+      geojson: { "type" => "LineString", "coordinates" => [[-46.63, -23.55], [-46.32, -23.96]] },
+      origem_coords: [-46.63, -23.55],
+      destino_coords: [-46.32, -23.96]
+    }
+  end
 
   before do
-    allow_any_instance_of(described_class).to receive(:calcular_distancia).and_return(100.0)
+    allow_any_instance_of(described_class).to receive(:calcular_distancia).and_return(rota_stub)
   end
 
   it "accepts integer values and preserves origin and destination" do
@@ -26,7 +35,6 @@ RSpec.describe CalcularFrete do
   end
 
   it "accepts decimal values with a point" do
-    allow_any_instance_of(described_class).to receive(:calcular_distancia).and_return(100.0)
     resultado = described_class.call(parametros.merge(peso: "10.5", volume: "1.25"))
 
     expect(resultado).to include(sucesso: true, peso: BigDecimal("10.5"), volume: BigDecimal("1.25"))
@@ -45,14 +53,18 @@ RSpec.describe CalcularFrete do
   it "uses the OpenRouteService route distance response" do
     service = described_class.new(parametros)
     response = instance_double(Net::HTTPResponse, is_a?: true, body: {
-      "routes" => [{
-        "summary" => { "distance" => 12_500, "duration" => 3_600 },
-        "geometry" => { "type" => "LineString", "coordinates" => [[-46.63, -23.55], [-46.32, -23.96]] }
+      "type" => "FeatureCollection",
+      "features" => [{
+        "type" => "Feature",
+        "geometry" => { "type" => "LineString", "coordinates" => [[-46.63, -23.55], [-46.32, -23.96]] },
+        "properties" => { "summary" => { "distance" => 12_500, "duration" => 3_600 } }
       }]
     }.to_json)
 
     http = instance_double(Net::HTTP)
     allow(http).to receive(:use_ssl=)
+    allow(http).to receive(:open_timeout=)
+    allow(http).to receive(:read_timeout=)
     allow(http).to receive(:request).and_return(response)
     allow(Net::HTTP).to receive(:new).and_return(http)
 
