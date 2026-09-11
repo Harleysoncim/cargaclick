@@ -20,6 +20,7 @@ test.describe("simulador de frete", () => {
 
   test("exibe a saudação na home", async ({ page }) => {
     await page.goto("/")
-    await expect(page.locator('[role="img"][aria-label*="CargaClick"]')).toContainText("Bem-vindo")
+    await expect(page.locator('h2:has-text("Bem-vindo ao CargaClick")')).toBeVisible()
+    await expect(page.locator('[role="img"][aria-label="Caminhão de entregas"]')).toBeVisible()
   })
 })

@@ -55,20 +55,11 @@
       </div>
 
       <dl class="mt-6 space-y-3" data-testid="simulation-breakdown">
-        <div><dt class="font-semibold">Status da tarifa</dt><dd><%= @resultado.dig(:pricing, :label) %></dd></div>
-        <div><dt class="font-semibold">Fonte</dt><dd><%= @resultado.dig(:pricing, :source) || "Não informada" %></dd></div>
-        <div><dt class="font-semibold">Amostra</dt><dd><%= @resultado.dig(:pricing, :sample_size) || 0 %> — <%= @resultado.dig(:pricing, :sample_status) == "insufficient" ? "Amostra insuficiente" : @resultado.dig(:pricing, :sample_status) %></dd></div>
         <div><dt class="font-semibold">Peso (kg)</dt><dd><%= number_with_delimiter(@resultado[:peso], separator: ",", delimiter: ".") %></dd></div>
         <div><dt class="font-semibold">Volume (m³)</dt><dd><%= number_with_delimiter(@resultado[:volume], separator: ",", delimiter: ".") %></dd></div>
-        <div><dt class="font-semibold">Duração</dt><dd><%= @resultado[:duracao_minutos] %> min</dd></div>
         <% if @resultado[:breakdown].present? %>
-          <div><dt class="font-semibold">Peso cubado</dt><dd><%= @resultado[:breakdown][:peso_cubado] || "Não calculado" %></dd></div>
-          <div><dt class="font-semibold">Peso tarifável</dt><dd><%= @resultado[:breakdown][:peso_tarifavel] || "Não calculado" %></dd></div>
           <div><dt class="font-semibold">Subtotal por distância</dt><dd><%= number_to_currency(@resultado[:breakdown][:subtotal_km], unit: "R$ ", separator: ",", delimiter: ".") %></dd></div>
           <div><dt class="font-semibold">Tarifa mínima</dt><dd><%= number_to_currency(@resultado[:breakdown][:taxa_minima], unit: "R$ ", separator: ",", delimiter: ".") %></dd></div>
-          <div><dt class="font-semibold">Pedágio</dt><dd><%= @resultado[:breakdown][:pedagio] || "Não informado" %></dd></div>
-          <div><dt class="font-semibold">Retorno</dt><dd><%= @resultado[:breakdown][:retorno] || "Não informado" %></dd></div>
-          <div><dt class="font-semibold">Valor sugerido</dt><dd><%= @resultado.dig(:pricing, :suggested_value) || "Não disponível" %></dd></div>
         <% end %>
       </dl>
 

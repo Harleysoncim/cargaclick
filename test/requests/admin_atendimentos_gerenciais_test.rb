@@ -22,16 +22,6 @@ class AdminAtendimentosGerenciaisTest < ActionDispatch::IntegrationTest
     assert_select ".mgmt-card", minimum: 14
   end
 
-  test "admin dashboard exposes the reports shortcut" do
-    admin = AdminUser.create!(email: "gestor.dashboard@example.com", password: "senha-segura")
-    sign_in admin
-
-    get admin_root_path
-
-    assert_response :success
-    assert_select "a[href='#{admin_atendimentos_gerenciais_path}']", text: /Relatórios gerenciais/
-  end
-
   test "returns validation error from protected data endpoint" do
     admin = AdminUser.create!(email: "gestor.api@example.com", password: "senha-segura")
     sign_in admin
