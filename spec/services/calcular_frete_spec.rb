@@ -42,6 +42,22 @@ RSpec.describe CalcularFrete do
     expect(resultado[:breakdown]).to include(peso: BigDecimal("10"), volume: BigDecimal("1"))
   end
 
+  it "uses the OpenRouteService route distance response" do
+    service = described_class.new(parametros)
+    response = instance_double(Net::HTTPResponse, is_a?: true, body: {
+      "routes" => [{ "summary" => { "distance" => 12_500 } }]
+    }.to_json)
+
+    http = instance_double(Net::HTTP)
+    allow(http).to receive(:use_ssl=)
+    allow(http).to receive(:request).and_return(response)
+    allow(Net::HTTP).to receive(:new).and_return(http)
+
+    distance = service.send(:distancia_ors, [ -46.63, -23.55 ], [ -46.32, -23.96 ])
+
+    expect(distance).to eq(12.5)
+  end
+
   [nil, "", "0", "-1", "abc", "NaN", "Infinity", "1,2.3"].each do |invalid|
     it "rejects invalid numeric input #{invalid.inspect}" do
       result = described_class.call(parametros.merge(peso: invalid))
