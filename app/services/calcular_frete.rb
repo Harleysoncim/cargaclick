@@ -54,6 +54,11 @@ class CalcularFrete
     rota         = calcular_distancia
     distancia_km = rota[:distancia_km]
     breakdown    = calcular_breakdown(distancia_km)
+    pricing      = FreightPricingService.call(
+      params: { peso: @peso, volume: @volume, tipo_carga: @tipo_carga },
+      route: { distancia_km: distancia_km.round(2), duracao_minutos: rota[:duracao_minutos] },
+      fallback: breakdown
+    )
 
     resposta_sucesso(
       origem: @origem,
@@ -69,7 +74,8 @@ class CalcularFrete
       origem_coords: rota[:origem_coords],
       destino_coords: rota[:destino_coords],
       valor_total: breakdown[:valor_final],
-      breakdown: breakdown
+      breakdown: breakdown,
+      pricing: pricing
     )
   rescue ServicoDeRotasIndisponivel => e
     resposta_erro(mensagem_rota_indisponivel(e.reason))
