@@ -49,7 +49,7 @@
 
         <div class="flex justify-between">
           <span class="font-semibold">Distância estimada</span>
-          <span><%= @resultado[:distancia_km] %> km</span>
+          <span><%= number_with_precision(@resultado[:distancia_km], precision: 2, separator: ",", delimiter: ".") %> km</span>
         </div>
 
       </div>
@@ -190,10 +190,10 @@
         <div class="min-h-[18rem]" data-route-map-canvas aria-label="Mapa da rota"></div>
         <aside class="border-t border-gray-200 p-5 md:border-l md:border-t-0">
           <dl class="space-y-4 text-sm text-gray-700">
-            <div><dt class="font-semibold">Distância</dt><dd><%= @resultado[:distancia_km] %> km</dd></div>
-            <div><dt class="font-semibold">Duração</dt><dd><%= @resultado[:duracao_minutos] %> min</dd></div>
-            <div><dt class="font-semibold">Peso</dt><dd><%= @resultado[:peso] %> kg</dd></div>
-            <div><dt class="font-semibold">Volume</dt><dd><%= @resultado[:volume] %> m³</dd></div>
+            <div><dt class="font-semibold">Distância</dt><dd><%= number_with_precision(@resultado[:distancia_km], precision: 2, separator: ",", delimiter: ".") %> km</dd></div>
+            <div><dt class="font-semibold">Duração</dt><dd><%= number_with_precision(@resultado[:duracao_minutos], precision: 1, separator: ",", delimiter: ".") %> min</dd></div>
+            <div><dt class="font-semibold">Peso</dt><dd><%= number_with_delimiter(@resultado[:peso], separator: ",", delimiter: ".") %> kg</dd></div>
+            <div><dt class="font-semibold">Volume</dt><dd><%= number_with_delimiter(@resultado[:volume], separator: ",", delimiter: ".") %> m³</dd></div>
             <div><dt class="font-semibold">Valor</dt><dd><%= number_to_currency(@resultado[:valor_total], unit: "R$ ", separator: ",", delimiter: ".") %></dd></div>
           </dl>
         </aside>
