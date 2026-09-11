@@ -71,6 +71,15 @@ jobs:
           path: rspec.log
           if-no-files-found: ignore
           retention-days: 7
+      - name: Publish sanitized RSpec failure annotation
+        if: ${{ failure() && hashFiles('rspec.log') != '' }}
+        shell: bash
+        run: |
+          summary="$(awk '/Failures:/,/Finished in/{print}' rspec.log | tail -n 80 | sed -E 's/(OPENROUTESERVICE_API_KEY|SECRET_KEY_BASE|DATABASE_URL|RAILS_MASTER_KEY|Authorization:)[^ ]*/[REDACTED]/g' | tr '\n' ' ' | cut -c1-6000)"
+          summary="${summary//'%'/'%25'}"
+          summary="${summary//$'\r'/'%0D'}"
+          summary="${summary//$'\n'/'%0A'}"
+          echo "::error file=spec::RSpec failure: ${summary}"
       - name: Run Rails tests
         run: bundle exec rails test
       - name: Start Rails and wait until ready
