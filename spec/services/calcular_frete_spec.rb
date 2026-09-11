@@ -45,7 +45,10 @@ RSpec.describe CalcularFrete do
   it "uses the OpenRouteService route distance response" do
     service = described_class.new(parametros)
     response = instance_double(Net::HTTPResponse, is_a?: true, body: {
-      "routes" => [{ "summary" => { "distance" => 12_500 } }]
+      "routes" => [{
+        "summary" => { "distance" => 12_500, "duration" => 3_600 },
+        "geometry" => { "type" => "LineString", "coordinates" => [[-46.63, -23.55], [-46.32, -23.96]] }
+      }]
     }.to_json)
 
     http = instance_double(Net::HTTP)
@@ -53,9 +56,10 @@ RSpec.describe CalcularFrete do
     allow(http).to receive(:request).and_return(response)
     allow(Net::HTTP).to receive(:new).and_return(http)
 
-    distance = service.send(:distancia_ors, [ -46.63, -23.55 ], [ -46.32, -23.96 ])
+    route = service.send(:distancia_ors, [ -46.63, -23.55 ], [ -46.32, -23.96 ])
 
-    expect(distance).to eq(12.5)
+    expect(route).to include(distancia_km: 12.5, duracao_minutos: 60.0)
+    expect(route[:geojson]["type"]).to eq("LineString")
   end
 
   it "returns a safe message when the route service has no key" do

@@ -51,7 +51,8 @@ class CalcularFrete
     erros = validar_parametros
     return resposta_erro("Parâmetros inválidos", erros) if erros.any?
 
-    distancia_km = calcular_distancia
+    rota         = calcular_distancia
+    distancia_km = rota[:distancia_km]
     breakdown    = calcular_breakdown(distancia_km)
 
     resposta_sucesso(
@@ -62,7 +63,11 @@ class CalcularFrete
       peso: @peso,
       volume: @volume,
       distancia_km: distancia_km.round(2),
-      tempo_estimado: estimar_tempo(distancia_km),
+      duracao_minutos: rota[:duracao_minutos],
+      tempo_estimado: estimar_tempo(rota[:duracao_minutos]),
+      rota_geojson: rota[:geojson],
+      origem_coords: rota[:origem_coords],
+      destino_coords: rota[:destino_coords],
       valor_total: breakdown[:valor_final],
       breakdown: breakdown
     )
@@ -117,7 +122,10 @@ class CalcularFrete
 
     raise ServicoDeRotasIndisponivel, :invalid_coordinates if coords_origem.nil? || coords_destino.nil?
 
-    distancia_ors(coords_origem, coords_destino)
+    distancia_ors(coords_origem, coords_destino).merge(
+      origem_coords: coords_origem,
+      destino_coords: coords_destino
+    )
   rescue ServicoDeRotasIndisponivel
     raise
   rescue StandardError => e
@@ -157,7 +165,10 @@ class CalcularFrete
     req["Authorization"] = ENV["OPENROUTESERVICE_API_KEY"]
     req["Content-Type"]  = "application/json"
 
-    req.body = { coordinates: [origem, destino] }.to_json
+    req.body = {
+      coordinates: [origem, destino],
+      geometry_format: "geojson"
+    }.to_json
 
     res = http.request(req)
     unless res.is_a?(Net::HTTPSuccess)
@@ -172,10 +183,19 @@ class CalcularFrete
     end
 
     body = JSON.parse(res.body)
-    metros = body.dig("routes", 0, "summary", "distance")
-    raise ServicoDeRotasIndisponivel, :invalid_response unless metros.is_a?(Numeric) && metros.positive?
+    route = body.dig("routes", 0)
+    metros = route&.dig("summary", "distance")
+    segundos = route&.dig("summary", "duration")
+    geojson = route&.dig("geometry")
+    unless metros.is_a?(Numeric) && metros.positive? && segundos.is_a?(Numeric) && segundos.positive? && valid_geojson?(geojson)
+      raise ServicoDeRotasIndisponivel, :invalid_response
+    end
 
-    metros.to_f / 1000.0
+    {
+      distancia_km: metros.to_f / 1000.0,
+      duracao_minutos: (segundos.to_f / 60.0).round(1),
+      geojson: geojson
+    }
   rescue JSON::ParserError
     raise ServicoDeRotasIndisponivel, :invalid_response
   rescue Net::OpenTimeout, Net::ReadTimeout
@@ -218,9 +238,16 @@ class CalcularFrete
     }
   end
 
-  def estimar_tempo(distancia_km)
-    horas = (distancia_km / 60.0).round(1)
+  def estimar_tempo(duracao_minutos)
+    horas = (duracao_minutos / 60.0).round(1)
     "#{horas}h"
+  end
+
+  def valid_geojson?(geojson)
+    geojson.is_a?(Hash) &&
+      geojson["type"] == "LineString" &&
+      geojson["coordinates"].is_a?(Array) &&
+      geojson["coordinates"].length >= 2
   end
 
   # ==================================================

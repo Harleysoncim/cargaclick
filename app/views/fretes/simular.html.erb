@@ -93,6 +93,15 @@
       ========================== -->
       <div class="mt-8 flex flex-col md:flex-row gap-4">
 
+        <% if @resultado[:rota_geojson].present? %>
+          <button type="button"
+                  class="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-xl transition shadow"
+                  data-route-map-open
+                  aria-haspopup="dialog">
+            Rota no mapa
+          </button>
+        <% end %>
+
         <%= link_to "Nova simulação",
           simular_frete_path,
           class: "flex-1 text-center px-6 py-3 rounded-xl bg-gray-100 hover:bg-gray-200 text-gray-700 font-semibold transition" %>
@@ -141,5 +150,50 @@
 
   </div>
 </div>
+
+<% if @resultado.present? && @resultado[:sucesso] && @resultado[:rota_geojson].present? %>
+  <div class="fixed inset-0 z-[1000] hidden bg-black/60 p-4 md:p-8"
+       data-route-map-modal
+      data-route-map-auto-open
+       role="dialog"
+       aria-modal="true"
+       aria-labelledby="route-map-title">
+    <div class="mx-auto flex h-full max-w-5xl flex-col overflow-hidden rounded-2xl bg-white shadow-2xl">
+      <header class="flex items-center justify-between gap-4 border-b border-gray-200 px-5 py-4">
+        <div>
+          <h2 id="route-map-title" class="text-xl font-bold text-gray-900">Rota no mapa</h2>
+          <p class="text-sm text-gray-600"><%= @resultado[:origem] %> → <%= @resultado[:destino] %></p>
+        </div>
+        <button type="button"
+                class="rounded-lg px-3 py-2 text-2xl leading-none text-gray-700 hover:bg-gray-100"
+                data-route-map-close
+                aria-label="Fechar mapa">&times;</button>
+      </header>
+
+      <div class="grid min-h-0 flex-1 grid-cols-1 md:grid-cols-[1fr_18rem]">
+        <div class="min-h-[18rem]" data-route-map-canvas aria-label="Mapa da rota"></div>
+        <aside class="border-t border-gray-200 p-5 md:border-l md:border-t-0">
+          <dl class="space-y-4 text-sm text-gray-700">
+            <div><dt class="font-semibold">Distância</dt><dd><%= @resultado[:distancia_km] %> km</dd></div>
+            <div><dt class="font-semibold">Duração</dt><dd><%= @resultado[:duracao_minutos] %> min</dd></div>
+            <div><dt class="font-semibold">Peso</dt><dd><%= @resultado[:peso] %> kg</dd></div>
+            <div><dt class="font-semibold">Volume</dt><dd><%= @resultado[:volume] %> m³</dd></div>
+            <div><dt class="font-semibold">Valor</dt><dd><%= number_to_currency(@resultado[:valor_total], unit: "R$ ", separator: ",", delimiter: ".") %></dd></div>
+          </dl>
+        </aside>
+      </div>
+      <p class="border-t border-gray-200 px-5 py-3 text-xs text-gray-500">
+        Mapa © OpenStreetMap contributors · Rota calculada pelo OpenRouteService
+      </p>
+    </div>
+    <script type="application/json" data-route-map-data><%= raw json_escape({
+      geojson: @resultado[:rota_geojson],
+      origem: @resultado[:origem],
+      destino: @resultado[:destino],
+      origem_coords: @resultado[:origem_coords],
+      destino_coords: @resultado[:destino_coords]
+    }.to_json) %></script>
+  </div>
+<% end %>
 
 
