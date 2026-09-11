@@ -25,7 +25,7 @@ class FreightPricingStatisticsService
       median: percentile(values, 0.50),
       p25: percentile(values, 0.25),
       p75: percentile(values, 0.75),
-      sample_status: values.length >= minimum ? "sufficient" : "insufficient",
+      sample_status: minimum && values.length >= minimum ? "sufficient" : "insufficient",
       criteria: @filters
     )
   end
@@ -61,7 +61,8 @@ class FreightPricingStatisticsService
       permitted_classes: [],
       aliases: false
     ) || {}
-    Integer(config["minimum_sample_size"] || 0)
+    value = config["minimum_sample_size"]
+    value.present? ? Integer(value) : nil
   end
 
   def percentile(values, percentile)
