@@ -1,0 +1,25 @@
+# Fase 1: estrutura versionada, sem ativação comercial.
+# Não preencher com valores sem aprovação de fonte, data e amostra.
+version: 1
+enabled: false
+source: null
+reference_date: null
+sample_size: 0
+minimum_sample_size: null
+sample_status: insufficient
+vehicles: {}
+distance_bands: []
+cargo_types: {}
+regions: {}
+parameters:
+  axes: {}
+  real_weight: {}
+  cubed_weight: {}
+  volume: {}
+  toll: {}
+  return_distance: {}
+  urgency: {}
+  operational_floor: null
+  median: null
+  p25: null
+  p75: null
