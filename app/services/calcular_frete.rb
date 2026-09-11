@@ -147,7 +147,7 @@ class CalcularFrete
     raise ServicoDeRotasIndisponivel unless res.is_a?(Net::HTTPSuccess)
 
     body = JSON.parse(res.body)
-    metros = body.dig("features", 0, "properties", "segments", 0, "distance")
+    metros = body.dig("routes", 0, "summary", "distance")
     raise ServicoDeRotasIndisponivel unless metros
 
     metros.to_f / 1000.0
