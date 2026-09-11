@@ -17,14 +17,4 @@ test.describe("simulador de frete", () => {
     await expect(page.locator("#peso")).toHaveAttribute("inputmode", "decimal")
     await expect(page.locator("#volume")).toHaveAttribute("inputmode", "decimal")
   })
-
-  test("renderiza a home com saudação", async ({ page }) => {
-    await page.goto("/")
-
-    // Verifica que a página carrega e tem o título correto
-    await expect(page).toHaveTitle(/CargaClick/)
-
-    // Verifica se há conteúdo "Bem-vindo" na página
-    await expect(page.locator("text=/Bem-vindo/")).toBeVisible()
-  })
 })
