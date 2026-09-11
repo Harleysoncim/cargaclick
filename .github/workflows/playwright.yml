@@ -81,7 +81,17 @@ jobs:
           summary="${summary//$'\n'/'%0A'}"
           echo "::error file=spec::RSpec failure: ${summary}"
       - name: Run Rails tests
-        run: bundle exec rails test
+        run: |
+          set -o pipefail
+          bundle exec rails test 2>&1 | tee rails-test.log
+      - name: Upload Rails test diagnostic
+        if: ${{ failure() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: rails-test-diagnostic
+          path: rails-test.log
+          if-no-files-found: ignore
+          retention-days: 7
       - name: Start Rails and wait until ready
         run: |
           bundle exec rails server -b 127.0.0.1 -p 3000 > rails-playwright.log 2>&1 &
