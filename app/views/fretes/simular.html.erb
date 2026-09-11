@@ -57,7 +57,7 @@
       <dl class="mt-6 space-y-3" data-testid="simulation-breakdown">
         <div><dt class="font-semibold">Status da tarifa</dt><dd><%= @resultado.dig(:pricing, :label) %></dd></div>
         <div><dt class="font-semibold">Fonte</dt><dd><%= @resultado.dig(:pricing, :source) || "Não informada" %></dd></div>
-        <div><dt class="font-semibold">Amostra</dt><dd><%= @resultado.dig(:pricing, :sample_size) || 0 %> — <%= @resultado.dig(:pricing, :sample_status) %></dd></div>
+        <div><dt class="font-semibold">Amostra</dt><dd><%= @resultado.dig(:pricing, :sample_size) || 0 %> — <%= @resultado.dig(:pricing, :sample_status) == "insufficient" ? "Amostra insuficiente" : @resultado.dig(:pricing, :sample_status) %></dd></div>
         <div><dt class="font-semibold">Peso (kg)</dt><dd><%= number_with_delimiter(@resultado[:peso], separator: ",", delimiter: ".") %></dd></div>
         <div><dt class="font-semibold">Volume (m³)</dt><dd><%= number_with_delimiter(@resultado[:volume], separator: ",", delimiter: ".") %></dd></div>
         <div><dt class="font-semibold">Duração</dt><dd><%= @resultado[:duracao_minutos] %> min</dd></div>

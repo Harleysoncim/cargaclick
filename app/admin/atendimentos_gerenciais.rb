@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 ActiveAdmin.register_page "Atendimentos Gerenciais" do
-  menu priority: 2, label: "Atendimentos Gerenciais"
+  menu priority: 2, label: "Relatórios gerenciais"
 
   controller do
     def index
