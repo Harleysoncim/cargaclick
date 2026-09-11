@@ -10,6 +10,8 @@ class FretesControllerTest < ActionDispatch::IntegrationTest
     assert_select "input#volume[type=text][required][inputmode=decimal][pattern]"
     assert_select "input#peso:not([disabled]):not([readonly])"
     assert_select "input#volume:not([disabled]):not([readonly])"
+    assert_select "label[for=peso]", /Peso \(kg\)/
+    assert_select "label[for=volume]", /Volume \(m³\)/
   end
 
   test "simulation validates decimal input and preserves route data" do

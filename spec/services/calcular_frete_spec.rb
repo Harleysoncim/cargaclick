@@ -58,6 +58,31 @@ RSpec.describe CalcularFrete do
     expect(distance).to eq(12.5)
   end
 
+  it "returns a safe message when the route service has no key" do
+    allow(ENV).to receive(:[]).and_call_original
+    allow(ENV).to receive(:[]).with("OPENROUTESERVICE_API_KEY").and_return(nil)
+
+    result = described_class.call(parametros)
+
+    expect(result).to include(sucesso: false)
+    expect(result[:mensagem]).to include("não está configurado")
+  end
+
+  it "returns a safe message when the route service times out" do
+    http = instance_double(Net::HTTP)
+    allow(http).to receive(:use_ssl=)
+    allow(http).to receive(:open_timeout=)
+    allow(http).to receive(:read_timeout=)
+    allow(http).to receive(:request).and_raise(Net::ReadTimeout)
+    allow(Net::HTTP).to receive(:new).and_return(http)
+
+    expect {
+      described_class.new(parametros).send(:distancia_ors, [ -46.63, -23.55 ], [ -46.32, -23.96 ])
+    }.to raise_error(CalcularFrete::ServicoDeRotasIndisponivel) { |error|
+      expect(error.reason).to eq(:timeout)
+    }
+  end
+
   [nil, "", "0", "-1", "abc", "NaN", "Infinity", "1,2.3"].each do |invalid|
     it "rejects invalid numeric input #{invalid.inspect}" do
       result = described_class.call(parametros.merge(peso: invalid))

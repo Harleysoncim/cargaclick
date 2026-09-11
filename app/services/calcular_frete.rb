@@ -7,7 +7,15 @@ require "uri"
 require "bigdecimal"
 
 class CalcularFrete
-  class ServicoDeRotasIndisponivel < StandardError; end
+  class ServicoDeRotasIndisponivel < StandardError
+    attr_reader :reason
+
+    def initialize(reason = :unknown)
+      @reason = reason
+      super()
+    end
+  end
+  ORS_TIMEOUT_SECONDS = 10
 
   # ==================================================
   # CONSTANTES DE NEGÓCIO
@@ -58,8 +66,8 @@ class CalcularFrete
       valor_total: breakdown[:valor_final],
       breakdown: breakdown
     )
-  rescue ServicoDeRotasIndisponivel
-    resposta_erro("Serviço de rotas indisponível. Tente novamente mais tarde.")
+  rescue ServicoDeRotasIndisponivel => e
+    resposta_erro(mensagem_rota_indisponivel(e.reason))
   rescue StandardError => e
     log_erro_fatal(e)
     resposta_erro("Erro interno ao simular o frete")
@@ -101,13 +109,13 @@ class CalcularFrete
   # ==================================================
   def calcular_distancia
     if ENV["OPENROUTESERVICE_API_KEY"].blank?
-      raise ServicoDeRotasIndisponivel
+      raise ServicoDeRotasIndisponivel, :missing_key
     end
 
     coords_origem  = geocodificar(@origem)
     coords_destino = geocodificar(@destino)
 
-    raise ServicoDeRotasIndisponivel if coords_origem.nil? || coords_destino.nil?
+    raise ServicoDeRotasIndisponivel, :invalid_coordinates if coords_origem.nil? || coords_destino.nil?
 
     distancia_ors(coords_origem, coords_destino)
   rescue ServicoDeRotasIndisponivel
@@ -120,22 +128,30 @@ class CalcularFrete
   def geocodificar(endereco)
     uri = URI("https://api.openrouteservice.org/geocode/search")
     uri.query = URI.encode_www_form(
-      api_key: ENV["OPENROUTESERVICE_API_KEY"],
       text: endereco,
       size: 1
     )
 
-    res = Net::HTTP.get_response(uri)
+    http = Net::HTTP.new(uri.host, uri.port)
+    http.use_ssl = true
+    http.open_timeout = ORS_TIMEOUT_SECONDS
+    http.read_timeout = ORS_TIMEOUT_SECONDS
+    req = Net::HTTP::Get.new(uri)
+    req["Authorization"] = ENV["OPENROUTESERVICE_API_KEY"]
+    res = http.request(req)
     return nil unless res.is_a?(Net::HTTPSuccess)
 
     body = JSON.parse(res.body)
-    body.dig("features", 0, "geometry", "coordinates")
+    coordinates = body.dig("features", 0, "geometry", "coordinates")
+    coordinates if coordinates.is_a?(Array) && coordinates.length == 2 && coordinates.all? { |value| value.is_a?(Numeric) }
   end
 
   def distancia_ors(origem, destino)
     uri = URI("https://api.openrouteservice.org/v2/directions/driving-car")
     http = Net::HTTP.new(uri.host, uri.port)
     http.use_ssl = true
+    http.open_timeout = ORS_TIMEOUT_SECONDS
+    http.read_timeout = ORS_TIMEOUT_SECONDS
 
     req = Net::HTTP::Post.new(uri)
     req["Authorization"] = ENV["OPENROUTESERVICE_API_KEY"]
@@ -144,13 +160,42 @@ class CalcularFrete
     req.body = { coordinates: [origem, destino] }.to_json
 
     res = http.request(req)
-    raise ServicoDeRotasIndisponivel unless res.is_a?(Net::HTTPSuccess)
+    unless res.is_a?(Net::HTTPSuccess)
+      reason = case res.code.to_i
+               when 401, 403 then :unauthorized
+               when 429 then :rate_limited
+               when 500..599 then :provider_error
+               else :provider_error
+               end
+      Rails.logger.warn("[CalcularFrete][ORS] status=#{res.code} reason=#{reason}")
+      raise ServicoDeRotasIndisponivel, reason
+    end
 
     body = JSON.parse(res.body)
     metros = body.dig("routes", 0, "summary", "distance")
-    raise ServicoDeRotasIndisponivel unless metros
+    raise ServicoDeRotasIndisponivel, :invalid_response unless metros.is_a?(Numeric) && metros.positive?
 
     metros.to_f / 1000.0
+  rescue JSON::ParserError
+    raise ServicoDeRotasIndisponivel, :invalid_response
+  rescue Net::OpenTimeout, Net::ReadTimeout
+    raise ServicoDeRotasIndisponivel, :timeout
+  rescue SocketError, Errno::ECONNREFUSED
+    raise ServicoDeRotasIndisponivel, :network
+  end
+
+  def mensagem_rota_indisponivel(reason)
+    {
+      missing_key: "O serviço de rotas não está configurado. Tente novamente mais tarde.",
+      unauthorized: "O serviço de rotas recusou a autenticação. Tente novamente mais tarde.",
+      rate_limited: "O serviço de rotas atingiu o limite temporário. Tente novamente mais tarde.",
+      timeout: "O serviço de rotas demorou para responder. Tente novamente mais tarde.",
+      invalid_coordinates: "Não foi possível localizar origem ou destino.",
+      invalid_response: "O serviço de rotas retornou uma resposta inválida. Tente novamente mais tarde.",
+      network: "Não foi possível conectar ao serviço de rotas. Tente novamente mais tarde.",
+      provider_error: "O serviço de rotas está indisponível. Tente novamente mais tarde.",
+      unknown: "Serviço de rotas indisponível. Tente novamente mais tarde."
+    }.fetch(reason, "Serviço de rotas indisponível. Tente novamente mais tarde.")
   end
 
   # ==================================================

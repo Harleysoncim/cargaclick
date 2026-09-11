@@ -51,35 +51,49 @@
 
     <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
 
-      <%= text_field_tag :origem, params[:origem],
+      <div>
+        <%= label_tag :origem, "Origem (CEP ou endereço)", class: "block text-sm font-semibold text-gray-800 mb-2" %>
+        <%= text_field_tag :origem, params[:origem],
+        aria: { label: "Origem (CEP ou endereço)" },
             placeholder: "Origem (CEP ou endereço)",
             required: true,
-            class: "w-full rounded-xl border-gray-300 px-4 py-3
+        class: "w-full rounded-xl border-gray-300 bg-white text-gray-900 caret-blue-600 placeholder:text-gray-500 px-4 py-3
                     focus:ring-2 focus:ring-blue-500 focus:border-blue-500" %>
+      </div>
 
-      <%= text_field_tag :destino, params[:destino],
+      <div>
+        <%= label_tag :destino, "Destino (CEP ou endereço)", class: "block text-sm font-semibold text-gray-800 mb-2" %>
+        <%= text_field_tag :destino, params[:destino],
+        aria: { label: "Destino (CEP ou endereço)" },
             placeholder: "Destino (CEP ou endereço)",
             required: true,
-            class: "w-full rounded-xl border-gray-300 px-4 py-3
+        class: "w-full rounded-xl border-gray-300 bg-white text-gray-900 caret-blue-600 placeholder:text-gray-500 px-4 py-3
                     focus:ring-2 focus:ring-blue-500 focus:border-blue-500" %>
+      </div>
 
-      <%= label_tag :peso, "Peso (kg)", class: "sr-only" %>
+      <div>
+        <%= label_tag :peso, "Peso (kg)", class: "block text-sm font-semibold text-gray-800 mb-2" %>
         <%= text_field_tag :peso, params[:peso],
+            aria: { label: "Peso em quilogramas" },
             placeholder: "Peso (kg)",
-          pattern: "[0-9]+([.,][0-9]+)?",
-          required: true,
+            pattern: "[0-9]+([.,][0-9]+)?",
+            required: true,
             inputmode: "decimal",
-            class: "w-full rounded-xl border-gray-300 px-4 py-3
+            class: "w-full rounded-xl border-gray-300 bg-white text-gray-900 caret-blue-600 placeholder:text-gray-500 px-4 py-3
                     focus:ring-2 focus:ring-blue-500 focus:border-blue-500" %>
+      </div>
 
-      <%= label_tag :volume, "Volume (m³)", class: "sr-only" %>
+      <div>
+        <%= label_tag :volume, "Volume (m³)", class: "block text-sm font-semibold text-gray-800 mb-2" %>
         <%= text_field_tag :volume, params[:volume],
+            aria: { label: "Volume em metros cúbicos" },
             placeholder: "Volume (m³)",
-          pattern: "[0-9]+([.,][0-9]+)?",
-          required: true,
+            pattern: "[0-9]+([.,][0-9]+)?",
+            required: true,
             inputmode: "decimal",
-            class: "w-full rounded-xl border-gray-300 px-4 py-3
+            class: "w-full rounded-xl border-gray-300 bg-white text-gray-900 caret-blue-600 placeholder:text-gray-500 px-4 py-3
                     focus:ring-2 focus:ring-blue-500 focus:border-blue-500" %>
+          </div>
     </div>
 
     <div class="mt-8">
