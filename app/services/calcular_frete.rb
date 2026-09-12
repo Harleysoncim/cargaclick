@@ -16,6 +16,7 @@ class CalcularFrete
     end
   end
   ORS_TIMEOUT_SECONDS = 10
+  CEP_REGEX = /\A\d{5}-?\d{3}\z/
 
   # ==================================================
   # CONSTANTES DE NEGÓCIO
@@ -140,10 +141,12 @@ class CalcularFrete
   end
 
   def geocodificar(endereco)
+    texto = resolver_endereco_por_cep(endereco) || endereco
     uri = URI("https://api.openrouteservice.org/geocode/search")
     uri.query = URI.encode_www_form(
-      text: endereco,
-      size: 1
+      text: texto,
+      size: 1,
+      "boundary.country" => "BR"
     )
 
     http = Net::HTTP.new(uri.host, uri.port)
@@ -158,6 +161,30 @@ class CalcularFrete
     body = JSON.parse(res.body)
     coordinates = body.dig("features", 0, "geometry", "coordinates")
     coordinates if coordinates.is_a?(Array) && coordinates.length == 2 && coordinates.all? { |value| value.is_a?(Numeric) }
+  end
+
+  # O geocoder do ORS não indexa CEPs brasileiros e retorna endereços de
+  # outros países (ou apenas o centro do Brasil) para entradas puramente
+  # numéricas. Resolvemos o CEP via ViaCEP para geocodificar o endereço real.
+  def resolver_endereco_por_cep(endereco)
+    texto = endereco.to_s.strip
+    return nil unless texto.match?(CEP_REGEX)
+
+    uri = URI("https://viacep.com.br/ws/#{texto.gsub(/\D/, '')}/json/")
+    http = Net::HTTP.new(uri.host, uri.port)
+    http.use_ssl = true
+    http.open_timeout = ORS_TIMEOUT_SECONDS
+    http.read_timeout = ORS_TIMEOUT_SECONDS
+    res = http.request(Net::HTTP::Get.new(uri))
+    return nil unless res.is_a?(Net::HTTPSuccess)
+
+    dados = JSON.parse(res.body)
+    return nil if dados["erro"]
+
+    [dados["logradouro"], dados["bairro"], dados["localidade"], dados["uf"], "Brasil"]
+      .map(&:presence).compact.join(", ").presence
+  rescue JSON::ParserError, Net::OpenTimeout, Net::ReadTimeout, SocketError, Errno::ECONNREFUSED
+    nil
   end
 
   def distancia_ors(origem, destino)
@@ -177,6 +204,7 @@ class CalcularFrete
     unless res.is_a?(Net::HTTPSuccess)
       reason = case res.code.to_i
                when 401, 403 then :unauthorized
+               when 404 then :route_not_found
                when 429 then :rate_limited
                when 500..599 then :provider_error
                else :provider_error
@@ -216,6 +244,7 @@ class CalcularFrete
       rate_limited: "O serviço de rotas atingiu o limite temporário. Tente novamente mais tarde.",
       timeout: "O serviço de rotas demorou para responder. Tente novamente mais tarde.",
       invalid_coordinates: "Não foi possível localizar origem ou destino.",
+      route_not_found: "Não foi possível encontrar uma rota entre os endereços informados. Verifique se estão corretos.",
       invalid_response: "O serviço de rotas retornou uma resposta inválida. Tente novamente mais tarde.",
       network: "Não foi possível conectar ao serviço de rotas. Tente novamente mais tarde.",
       provider_error: "O serviço de rotas está indisponível. Tente novamente mais tarde.",

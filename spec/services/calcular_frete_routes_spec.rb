@@ -60,4 +60,95 @@ RSpec.describe CalcularFrete, "OpenRouteService JSON responses" do
       expect(described_class.call(params)).to include(sucesso: false, mensagem: /recusou a autenticação/)
     end
   end
+
+  context "when the directions API finds no route between the geocoded points" do
+    let(:response) { Net::HTTPNotFound.new("1.1", "404", "Not Found") }
+
+    it "reports a route-not-found error distinct from a generic outage" do
+      resultado = described_class.call(params)
+
+      expect(resultado).to include(sucesso: false, mensagem: /Não foi possível encontrar uma rota/)
+      expect(resultado[:mensagem]).not_to match(/indisponível/)
+    end
+  end
+
+  context "when pricing fails after a successful route calculation" do
+    it "reports an internal error instead of blaming the route service" do
+      allow(FreightPricingService).to receive(:call).and_raise(StandardError, "boom")
+
+      resultado = described_class.call(params)
+
+      expect(resultado).to include(sucesso: false, mensagem: "Erro interno ao simular o frete")
+    end
+  end
+end
+
+RSpec.describe CalcularFrete, "resolução de CEP brasileiro antes da geocodificação" do
+  let(:http) { instance_double(Net::HTTP) }
+  let(:params) { { origem: "18086-270", destino: "18090-300", peso: "66", volume: "6" } }
+  let(:viacep_origem) do
+    Net::HTTPOK.new("1.1", "200", "OK").tap do |res|
+      allow(res).to receive(:body).and_return({
+        logradouro: "Rua Luiz Silveira", bairro: "Jardim Ibiti do Paço", localidade: "Sorocaba", uf: "SP"
+      }.to_json)
+    end
+  end
+  let(:viacep_destino) do
+    Net::HTTPOK.new("1.1", "200", "OK").tap do |res|
+      allow(res).to receive(:body).and_return({
+        logradouro: "Rua Antônio D'Angelis", bairro: "Vila Progresso", localidade: "Sorocaba", uf: "SP"
+      }.to_json)
+    end
+  end
+  let(:geocode_origin) do
+    Net::HTTPOK.new("1.1", "200", "OK").tap do |res|
+      allow(res).to receive(:body).and_return({ features: [{ geometry: { coordinates: [-47.4452, -23.4654] } }] }.to_json)
+    end
+  end
+  let(:geocode_destination) do
+    Net::HTTPOK.new("1.1", "200", "OK").tap do |res|
+      allow(res).to receive(:body).and_return({ features: [{ geometry: { coordinates: [-47.4447, -23.4822] } }] }.to_json)
+    end
+  end
+  let(:route_body) do
+    {
+      "type" => "FeatureCollection",
+      "features" => [{
+        "type" => "Feature",
+        "geometry" => { "type" => "LineString", "coordinates" => [[-47.4452, -23.4654], [-47.4447, -23.4822]] },
+        "properties" => { "summary" => { "distance" => 3374.3, "duration" => 392.9 } }
+      }]
+    }
+  end
+  let(:route_response) { Net::HTTPOK.new("1.1", "200", "OK").tap { |res| allow(res).to receive(:body).and_return(route_body.to_json) } }
+
+  before do
+    allow(ENV).to receive(:[]).and_call_original
+    allow(ENV).to receive(:[]).with("OPENROUTESERVICE_API_KEY").and_return("test-only-route-key")
+
+    viacep_http = instance_double(Net::HTTP)
+    allow(Net::HTTP).to receive(:new).with("viacep.com.br", 443).and_return(viacep_http)
+    allow(viacep_http).to receive(:use_ssl=).with(true)
+    allow(viacep_http).to receive(:open_timeout=)
+    allow(viacep_http).to receive(:read_timeout=)
+    allow(viacep_http).to receive(:request).and_return(viacep_origem, viacep_destino)
+
+    allow(Net::HTTP).to receive(:new).with("api.openrouteservice.org", 443).and_return(http)
+    allow(http).to receive(:use_ssl=).with(true)
+    allow(http).to receive(:open_timeout=)
+    allow(http).to receive(:read_timeout=)
+    allow(http).to receive(:request).and_return(geocode_origin, geocode_destination, route_response)
+  end
+
+  it "enriches a bare CEP with the ViaCEP address before geocoding, instead of sending the raw digits" do
+    resultado = described_class.call(params)
+
+    expect(resultado).to include(sucesso: true, distancia_km: 3.37)
+    expect(http).to have_received(:request).with(satisfy { |request|
+      request.path.include?("Rua+Luiz+Silveira") && request.path.include?("boundary.country=BR")
+    }).once
+    expect(http).to have_received(:request).with(satisfy { |request|
+      request.path.include?("Rua+Ant%C3%B4nio") && request.path.include?("boundary.country=BR")
+    }).once
+  end
 end
