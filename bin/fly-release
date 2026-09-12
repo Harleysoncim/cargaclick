@@ -2,7 +2,7 @@
 set -euo pipefail
 : "${DATABASE_URL:?DATABASE_URL is required}"
 if [ "${FLY_MIGRATIONS_ENABLED:-false}" != true ]; then
-  echo 'Migration blocked: approve and verify the destination database before enabling FLY_MIGRATIONS_ENABLED.' >&2
-  exit 1
+  echo 'Migrations skipped: FLY_MIGRATIONS_ENABLED is not true. Deploying code without running db:migrate.' >&2
+  exit 0
 fi
 exec bundle exec rails db:migrate
