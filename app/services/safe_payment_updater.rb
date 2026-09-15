@@ -55,7 +55,12 @@ class SafePaymentUpdater
   end
 
   def validate_payment_consistency!
-    expected_amount = frete.valor_final.presence || frete.valor.to_d
+    cotacao = frete.cotacao
+    raise ArgumentError, "Frete not linked to quotation" if cotacao.nil?
+    raise ArgumentError, "Quotation has no value" if cotacao.valor.blank?
+    raise ArgumentError, "Quotation has expired" if cotacao.expired?
+
+    expected_amount = cotacao.valor.to_d
 
     unless amounts_match?(amount.to_d, expected_amount)
       raise ArgumentError,

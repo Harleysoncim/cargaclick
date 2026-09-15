@@ -4,21 +4,7 @@ module Webhooks
       skip_before_action :verify_authenticity_token
 
       def callback
-        signature = request.headers["X-Signature"]
-        payload = request.raw_post
-
-        validator = WebhookValidator.new(
-          provider: :pix_efi,
-          payload: payload,
-          signature: signature
-        )
-
-        unless validator.valid?
-          Rails.logger.warn("[Webhooks::Efi::PixController] Invalid EFI signature")
-          return head :unauthorized
-        end
-
-        data = JSON.parse(payload)
+        data = JSON.parse(request.raw_post)
         txid = data.dig("txid")
         amount = data.dig("valor")&.to_d
 
@@ -38,6 +24,12 @@ module Webhooks
 
         Rails.logger.error("[Webhooks::Efi::PixController] Payment update failed: #{update_result[:error]}")
         head :unprocessable_entity
+      rescue JSON::ParserError => e
+        Rails.logger.warn("[Webhooks::Efi::PixController] Invalid JSON: #{e.message}")
+        head :bad_request
+      rescue StandardError => e
+        Rails.logger.error("[Webhooks::Efi::PixController] Unexpected error: #{e.message}")
+        head :internal_server_error
       end
     end
   end

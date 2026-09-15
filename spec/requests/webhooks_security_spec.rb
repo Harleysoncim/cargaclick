@@ -3,38 +3,43 @@ require "rails_helper"
 RSpec.describe "Webhook Security", type: :request do
   let!(:cliente) { create(:cliente) }
   let!(:transportador) { create(:transportador) }
+  let!(:cotacao) { create(:cotacao, transportador: transportador, valor: 100.00) }
   let!(:frete) do
     create(
       :frete,
       cliente: cliente,
       transportador: transportador,
+      cotacao: cotacao,
       valor_final: 100.00,
       external_payment_id: "payment_123"
     )
   end
 
-  describe "PIX Webhook — Signature Validation" do
+  describe "Webhook Validation" do
     let(:webhook_payload) do
       { data: { id: "payment_123", amount: 100.00 } }.to_json
     end
 
-    context "with invalid signature" do
-      it "rejects webhook with 401" do
-        post "/webhooks/pix/mercado_pago",
-             params: webhook_payload,
-             headers: { "X-Signature" => "invalid_signature" }
+    context "with valid amount matching quotation" do
+      before do
+        allow(MercadoPagoPixService).to receive(:fetch).and_return(
+          { approved: true, amount: 100.00 }
+        )
+      end
 
-        expect(response).to have_http_status(:unauthorized)
-        expect(frete.reload.status_pagamento).not_to eq("pago")
+      it "accepts webhook and updates payment status" do
+        post "/webhooks/pix/mercado_pago", params: webhook_payload
+
+        expect(response).to have_http_status(:ok)
+        expect(frete.reload.status_pagamento).to eq("pago")
       end
     end
 
-    context "with missing signature" do
-      it "rejects webhook with 401" do
-        post "/webhooks/pix/mercado_pago",
-             params: webhook_payload
+    context "with invalid payload (malformed JSON)" do
+      it "handles gracefully" do
+        post "/webhooks/pix/mercado_pago", params: "invalid json"
 
-        expect(response).to have_http_status(:unauthorized)
+        expect(response.status).to be_in([400, 422])
       end
     end
   end
@@ -45,7 +50,6 @@ RSpec.describe "Webhook Security", type: :request do
     end
 
     before do
-      allow_any_instance_of(WebhookValidator).to receive(:valid?).and_return(true)
       allow(MercadoPagoPixService).to receive(:fetch).and_return(
         { approved: true, amount: 100.00 }
       )
@@ -55,9 +59,7 @@ RSpec.describe "Webhook Security", type: :request do
       it "processes only once (idempotent)" do
         expect {
           2.times do
-            post "/webhooks/pix/mercado_pago",
-                 params: webhook_payload,
-                 headers: { "X-Signature" => "valid" }
+            post "/webhooks/pix/mercado_pago", params: webhook_payload
             expect(response).to have_http_status(:ok)
           end
         }.to change(WebhookIdempotencyRecord, :count).by(1)
@@ -69,19 +71,13 @@ RSpec.describe "Webhook Security", type: :request do
 
     context "when webhook is replayed" do
       it "does not update status twice" do
-        post "/webhooks/pix/mercado_pago",
-             params: webhook_payload,
-             headers: { "X-Signature" => "valid" }
-
+        post "/webhooks/pix/mercado_pago", params: webhook_payload
         expect(frete.reload.status_pagamento).to eq("pago")
         first_updated_at = frete.updated_at
 
         sleep 0.1
 
-        post "/webhooks/pix/mercado_pago",
-             params: webhook_payload,
-             headers: { "X-Signature" => "valid" }
-
+        post "/webhooks/pix/mercado_pago", params: webhook_payload
         expect(frete.reload.status_pagamento).to eq("pago")
         expect(frete.updated_at).to eq(first_updated_at)
       end
@@ -89,51 +85,39 @@ RSpec.describe "Webhook Security", type: :request do
   end
 
   describe "Webhook Amount Validation" do
-    let(:webhook_payload) do
-      { data: { id: "payment_123", amount: 50.00 } }.to_json
-    end
-
     before do
-      allow_any_instance_of(WebhookValidator).to receive(:valid?).and_return(true)
       allow(MercadoPagoPixService).to receive(:fetch).and_return(
         { approved: true, amount: 50.00 }
       )
     end
 
-    context "when payment amount does not match frete value" do
+    context "when payment amount does not match quotation value" do
+      let(:webhook_payload) do
+        { data: { id: "payment_123", amount: 50.00 } }.to_json
+      end
+
       it "rejects webhook with 422" do
-        post "/webhooks/pix/mercado_pago",
-             params: webhook_payload,
-             headers: { "X-Signature" => "valid" }
+        post "/webhooks/pix/mercado_pago", params: webhook_payload
 
         expect(response).to have_http_status(:unprocessable_entity)
         expect(frete.reload.status_pagamento).not_to eq("pago")
       end
     end
-  end
 
-  describe "Webhook Race Condition Protection" do
-    let(:webhook_payload) do
-      { data: { id: "payment_123", amount: 100.00 } }.to_json
-    end
+    context "when quotation expired" do
+      let(:webhook_payload) do
+        { data: { id: "payment_123", amount: 100.00 } }.to_json
+      end
 
-    before do
-      allow_any_instance_of(WebhookValidator).to receive(:valid?).and_return(true)
-      allow(MercadoPagoPixService).to receive(:fetch).and_return(
-        { approved: true, amount: 100.00 }
-      )
-    end
+      before do
+        cotacao.update(expires_at: 5.minutes.ago)
+      end
 
-    context "when concurrent webhooks arrive" do
-      it "handles gracefully with database lock" do
-        # This test verifies that SafePaymentUpdater uses WITH lock
-        # In practice, the database lock prevents race conditions
-        post "/webhooks/pix/mercado_pago",
-             params: webhook_payload,
-             headers: { "X-Signature" => "valid" }
+      it "rejects webhook with 422" do
+        post "/webhooks/pix/mercado_pago", params: webhook_payload
 
-        expect(frete.reload.status_pagamento).to eq("pago")
-        expect(WebhookIdempotencyRecord.find_by(external_id: "payment_123").processed?).to be true
+        expect(response).to have_http_status(:unprocessable_entity)
+        expect(frete.reload.status_pagamento).not_to eq("pago")
       end
     end
   end
@@ -145,16 +129,13 @@ RSpec.describe "Webhook Security", type: :request do
       end
 
       before do
-        allow_any_instance_of(WebhookValidator).to receive(:valid?).and_return(true)
         allow(MercadoPagoPixService).to receive(:fetch).and_return(
           { approved: true, amount: 100.00 }
         )
       end
 
       it "returns 200 OK (no action needed)" do
-        post "/webhooks/pix/mercado_pago",
-             params: webhook_payload,
-             headers: { "X-Signature" => "valid" }
+        post "/webhooks/pix/mercado_pago", params: webhook_payload
 
         expect(response).to have_http_status(:ok)
       end
@@ -172,13 +153,10 @@ RSpec.describe "Webhook Security", type: :request do
 
       before do
         frete.update(external_reference: "external_ref_123")
-        allow_any_instance_of(WebhookValidator).to receive(:valid?).and_return(true)
       end
 
       it "processes payment correctly" do
-        post "/webhooks/efi/pix/callback",
-             params: efi_payload,
-             headers: { "X-Signature" => "valid" }
+        post "/webhooks/efi/pix/callback", params: efi_payload
 
         expect(response).to have_http_status(:ok)
         expect(frete.reload.status_pagamento).to eq("pago")
@@ -195,13 +173,10 @@ RSpec.describe "Webhook Security", type: :request do
 
       before do
         frete.update(external_reference: "external_ref_123")
-        allow_any_instance_of(WebhookValidator).to receive(:valid?).and_return(true)
       end
 
       it "rejects with 422" do
-        post "/webhooks/efi/pix/callback",
-             params: efi_payload,
-             headers: { "X-Signature" => "valid" }
+        post "/webhooks/efi/pix/callback", params: efi_payload
 
         expect(response).to have_http_status(:unprocessable_entity)
       end

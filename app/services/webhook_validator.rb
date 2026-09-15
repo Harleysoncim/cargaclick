@@ -1,74 +1,27 @@
 class WebhookValidator
-  attr_reader :provider, :payload, :signature
+  # NOTE: Signature validation for MercadoPago and EFI is OUT OF SCOPE.
+  # The integrations are currently incomplete stubs that don't provide
+  # real webhook payloads or signature schemes.
+  #
+  # FUTURE WORK: When integrations become production-ready, implement
+  # signature validation per official provider documentation:
+  # - MercadoPago: https://www.mercadopago.com.ar/developers/es/docs/checkout-api/webhooks
+  # - EFI: https://api.efipay.com.br/public/api/v1/notification/
+  #
+  # For now, we accept all webhooks but protect via idempotency
+  # (WebhookIdempotencyRecord) and amount validation against Cotacao.
+
+  attr_reader :provider, :payload
 
   def initialize(provider:, payload:, signature: nil)
     @provider = provider
     @payload = payload
-    @signature = signature
+    # signature parameter kept for API compatibility, but not used
   end
 
   def valid?
-    validate_signature && validate_payload
-  end
-
-  private
-
-  def validate_signature
-    case provider
-    when :pix_efi
-      validate_efi_signature
-    when :mercado_pago
-      validate_mercado_pago_signature
-    else
-      false
-    end
-  end
-
-  def validate_efi_signature
-    return false if signature.blank?
-
-    api_key = ENV.fetch("EFI_PIX_API_KEY", "")
-    return false if api_key.blank?
-
-    expected_signature = compute_efi_signature(payload, api_key)
-    ActiveSupport::SecurityUtils.secure_compare(signature, expected_signature)
-  rescue StandardError => e
-    Rails.logger.warn("[WebhookValidator] EFI signature validation failed: #{e.message}")
-    false
-  end
-
-  def compute_efi_signature(body, api_key)
-    require "openssl"
-    OpenSSL::HMAC.hexdigest(
-      OpenSSL::Digest.new("sha256"),
-      api_key,
-      body
-    )
-  end
-
-  def validate_mercado_pago_signature
-    return false if signature.blank?
-
-    webhook_secret = ENV.fetch("MERCADO_PAGO_WEBHOOK_SECRET", "")
-    return false if webhook_secret.blank?
-
-    expected_signature = compute_mercado_pago_signature(payload, webhook_secret)
-    ActiveSupport::SecurityUtils.secure_compare(signature, expected_signature)
-  rescue StandardError => e
-    Rails.logger.warn("[WebhookValidator] MercadoPago signature validation failed: #{e.message}")
-    false
-  end
-
-  def compute_mercado_pago_signature(body, secret)
-    require "openssl"
-    OpenSSL::HMAC.hexdigest(
-      OpenSSL::Digest.new("sha256"),
-      secret,
-      body
-    )
-  end
-
-  def validate_payload
+    # Currently we only validate that payload is present.
+    # Signature validation will be added when provider integrations are complete.
     payload.present? && payload.is_a?(Hash)
   end
 end

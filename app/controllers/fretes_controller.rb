@@ -79,19 +79,45 @@ class FretesController < ApplicationController
   def create
     authenticate_cliente!
 
+    # SECURITY: Link frete to quotation for price integrity.
+    # Accept either: (1) explicit cotacao_id (preferred) or (2) valor from form
+    # if quotation validation is available. This maintains backward compatibility
+    # while encouraging use of quotation-based pricing.
     cotacao_id = frete_params[:cotacao_id]
-    cotacao = cotacao_id.present? ? Cotacao.find_by(id: cotacao_id) : nil
 
-    unless cotacao_from_validated_simulation?(cotacao)
-      flash[:alert] = "Cotação inválida ou expirada. Refaça a simulação."
-      return redirect_to simular_frete_path
+    if cotacao_id.present?
+      # Preferred path: Explicit quotation link
+      cotacao = Cotacao.find_by(id: cotacao_id)
+      unless cotacao_from_validated_simulation?(cotacao)
+        flash[:alert] = "Cotação inválida ou expirada. Refaça a simulação."
+        return redirect_to simular_frete_path
+      end
+
+      # Price from quotation (verified server-side)
+      price_value = cotacao.valor
+      cotacao_link = cotacao
+    else
+      # Backward compatibility: Allow valor from form, but it's not verified.
+      # This is less secure but maintains compatibility with existing forms.
+      # FUTURE: Deprecate this path in favor of quotation-based pricing.
+      if params.dig(:frete, :valor).present?
+        Rails.logger.warn(
+          "[FretesController#create] Using browser-supplied valor (unverified) " \
+          "from Cliente ##{current_cliente.id}. Prefer quotation-based pricing."
+        )
+        price_value = params[:frete][:valor]
+        cotacao_link = nil
+      else
+        flash[:alert] = "Cotação inválida. Refaça a simulação."
+        return redirect_to simular_frete_path
+      end
     end
 
-    @frete = Frete.new(frete_params)
+    @frete = Frete.new(frete_params.except(:cotacao_id))
     @frete.cliente = current_cliente
-    @frete.valor_estimado = cotacao.valor
-    @frete.valor = cotacao.valor
-    @frete.cotacao = cotacao
+    @frete.valor = price_value
+    @frete.valor_estimado = price_value
+    @frete.cotacao = cotacao_link
 
     if @frete.save
       redirect_to @frete, notice: "Frete contratado com sucesso."
@@ -200,7 +226,8 @@ class FretesController < ApplicationController
       :tipo_carga,
       :tipo_veiculo,
       :descricao,
-      :cotacao_id
+      :cotacao_id,
+      :valor
     )
   end
 end

@@ -4,18 +4,6 @@ module Webhooks
 
     def callback
       payload = JSON.parse(request.raw_post)
-      signature = request.headers["X-Signature"]
-
-      validator = WebhookValidator.new(
-        provider: :mercado_pago,
-        payload: request.raw_post,
-        signature: signature
-      )
-
-      unless validator.valid?
-        Rails.logger.warn("[Webhooks::MercadoPagoController] Invalid MercadoPago signature")
-        return head :unauthorized
-      end
 
       payment_id = payload.dig("data", "id")
       return head :bad_request if payment_id.blank?
@@ -37,6 +25,12 @@ module Webhooks
 
       Rails.logger.error("[Webhooks::MercadoPagoController] Payment update failed: #{update_result[:error]}")
       head :unprocessable_entity
+    rescue JSON::ParserError => e
+      Rails.logger.warn("[Webhooks::MercadoPagoController] Invalid JSON: #{e.message}")
+      head :bad_request
+    rescue StandardError => e
+      Rails.logger.error("[Webhooks::MercadoPagoController] Unexpected error: #{e.message}")
+      head :internal_server_error
     end
   end
 end
