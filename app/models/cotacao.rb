@@ -26,10 +26,13 @@ class Cotacao < ApplicationRecord
 
   # === CALLBACKS ====================================
   before_validation :set_default_status, on: :create
+  before_validation :set_default_expires_at, on: :create
   before_validation :calcular_comissao # calcula antes de validar, mas respeita comissao já definida
 
   # === SCOPES =======================================
   scope :recentes, -> { order(created_at: :desc) }
+  scope :valid, -> { where("expires_at IS NULL OR expires_at > ?", Time.current) }
+  scope :expired, -> { where("expires_at IS NOT NULL AND expires_at <= ?", Time.current) }
   # você também possui escopos gerados pelo enum: .pendente, .aprovado, .rejeitado
 
   # === CONSTANTES / REGRAS DE NEGÓCIO ===============
@@ -38,6 +41,14 @@ class Cotacao < ApplicationRecord
   def valor_liquido
     return 0.to_d if valor.blank?
     (valor.to_d - (comissao || 0).to_d).clamp(0.to_d, valor.to_d).round(2)
+  end
+
+  def expired?
+    expires_at.present? && expires_at <= Time.current
+  end
+
+  def valid_for_contract?
+    !expired? && valor.present? && valor.to_d.positive? && status == "pendente"
   end
 
   def to_s
@@ -49,6 +60,10 @@ class Cotacao < ApplicationRecord
 
   def set_default_status
     self.status ||= "pendente"
+  end
+
+  def set_default_expires_at
+    self.expires_at ||= 30.minutes.from_now
   end
 
   def calcular_comissao
