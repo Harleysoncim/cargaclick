@@ -7,6 +7,7 @@ class FretesController < ApplicationController
   before_action :set_frete, only: %i[
     show edit update destroy chat rastreamento
   ]
+  before_action :authorize_frete!, only: %i[show edit update destroy chat]
   before_action :authorize_rastreamento!, only: :rastreamento
 
   # ==================================================
@@ -78,8 +79,19 @@ class FretesController < ApplicationController
   def create
     authenticate_cliente!
 
+    cotacao_id = frete_params[:cotacao_id]
+    cotacao = cotacao_id.present? ? Cotacao.find_by(id: cotacao_id) : nil
+
+    unless cotacao_from_validated_simulation?(cotacao)
+      flash[:alert] = "Cotação inválida ou expirada. Refaça a simulação."
+      return redirect_to simular_frete_path
+    end
+
     @frete = Frete.new(frete_params)
     @frete.cliente = current_cliente
+    @frete.valor_estimado = cotacao.valor
+    @frete.valor = cotacao.valor
+    @frete.cotacao = cotacao
 
     if @frete.save
       redirect_to @frete, notice: "Frete contratado com sucesso."
@@ -121,6 +133,13 @@ class FretesController < ApplicationController
   private
 
   # ==================================================
+  # VALIDAÇÃO DE COTAÇÃO
+  # ==================================================
+  def cotacao_from_validated_simulation?(cotacao)
+    cotacao.present? && cotacao.valid_for_contract?
+  end
+
+  # ==================================================
   # PARÂMETROS DE SIMULAÇÃO
   # ==================================================
   def parametros_simulacao
@@ -142,6 +161,14 @@ class FretesController < ApplicationController
     return if @frete.present?
 
     redirect_to inicio_path, alert: "Frete não encontrado."
+  end
+
+  def authorize_frete!
+    return if current_admin_user.present?
+    return if current_cliente.present? && @frete.cliente_id == current_cliente.id
+    return if current_transportador.present? && @frete.transportador_id == current_transportador.id
+
+    head :not_found
   end
 
   def authorize_rastreamento!
@@ -173,7 +200,7 @@ class FretesController < ApplicationController
       :tipo_carga,
       :tipo_veiculo,
       :descricao,
-      :valor
+      :cotacao_id
     )
   end
 end
