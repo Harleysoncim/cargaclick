@@ -110,6 +110,18 @@ Rails.application.routes.draw do
   end
 
   # =====================================================
+  # 🪝 WEBHOOKS — PAGAMENTOS
+  # =====================================================
+  namespace :webhooks do
+    post "pix", to: "pix#mercado_pago"
+    post "mercado_pago", to: "mercado_pago#callback"
+
+    namespace :efi do
+      post "pix", to: "pix#callback"
+    end
+  end
+
+  # =====================================================
   # 🚫 FALLBACK — 404 CONTROLADO
   # =====================================================
   match "*path", to: "errors#not_found", via: :all
