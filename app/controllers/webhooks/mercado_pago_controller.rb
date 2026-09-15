@@ -3,10 +3,40 @@ module Webhooks
     skip_before_action :verify_authenticity_token
 
     def callback
-      payment_id = params.dig("data", "id")
+      payload = JSON.parse(request.raw_post)
+      signature = request.headers["X-Signature"]
+
+      validator = WebhookValidator.new(
+        provider: :mercado_pago,
+        payload: request.raw_post,
+        signature: signature
+      )
+
+      unless validator.valid?
+        Rails.logger.warn("[Webhooks::MercadoPagoController] Invalid MercadoPago signature")
+        return head :unauthorized
+      end
+
+      payment_id = payload.dig("data", "id")
+      return head :bad_request if payment_id.blank?
+
+      result = MercadoPagoPixService.fetch(payment_id)
+      return head :ok unless result[:approved]
+
       frete = Frete.find_by(external_payment_id: payment_id)
-      frete.update!(status_pagamento: :pago) if frete
-      head :ok
+      return head :ok unless frete
+
+      update_result = SafePaymentUpdater.call(
+        frete: frete,
+        external_id: payment_id,
+        amount: result[:amount],
+        provider: "mercado_pago"
+      )
+
+      return head :ok if update_result[:success]
+
+      Rails.logger.error("[Webhooks::MercadoPagoController] Payment update failed: #{update_result[:error]}")
+      head :unprocessable_entity
     end
   end
 end
